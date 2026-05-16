@@ -65,6 +65,40 @@ const userSchema = new mongoose.Schema({
         enum: ['user', 'admin'],
         default: 'user',
     },
+
+    userIcons: {
+        type: [
+            {
+                title: String,
+                iconURL: String,
+            }
+        ],
+        default: [],
+    },
+
+    profileBackground: {
+        type: {
+            type: String,
+            enum: ['image', 'video'],
+            default: 'image',
+        },
+        url: {
+            type: String,
+            default: '',
+        },
+    },
+
+    boardTheme: {
+        type: String,
+        enum: ['water'],
+        default: 'water',
+    },
+
+    menuBackground: {
+        type: String,
+        enum: ['default', 'red-bull', 'wood'],
+        default: 'default',
+    },
 }, {
     timestamps: true,
 });
