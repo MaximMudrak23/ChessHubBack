@@ -7,6 +7,45 @@ export async function updateProfile(req: AuthRequest, res: Response) {
     try {
         const { name, description } = req.body;
 
+        if (name === undefined && description === undefined) {
+            return res.status(400).json({
+                message: 'Profile data is missing',
+            });
+        }
+
+        if (name !== undefined && typeof name !== 'string') {
+            return res.status(400).json({
+                message: 'Name must be a string',
+            })
+        }
+
+        if (description !== undefined && typeof description !== 'string') {
+            return res.status(400).json({
+                message: 'Description must be a string',
+            })
+        }
+        
+        const trimmedName = name?.trim();
+        const trimmedDescription = description?.trim();
+
+        if (name !== undefined && !trimmedName) {
+            return res.status(400).json({
+                message: 'Name is required',
+            });
+        }
+
+        if (name !== undefined && (trimmedName.length < 1 || trimmedName.length > 24)) {
+            return res.status(400).json({
+                message: 'Name must be between 1 and 24 characters',
+            });
+        }
+
+        if (description !== undefined && trimmedDescription.length > 300) {
+            return res.status(400).json({
+                message: 'Description max length is 300 characters',
+            });
+        }
+
         const user = await UserModel.findById(req.userId);
 
         if (!user) {
@@ -16,11 +55,11 @@ export async function updateProfile(req: AuthRequest, res: Response) {
         }
 
         if (name !== undefined) {
-            user.name = name;
+            user.name = trimmedName;
         }
 
         if (description !== undefined) {
-            user.description = description;
+            user.description = trimmedDescription;
         }
 
         await user.save();
@@ -30,6 +69,7 @@ export async function updateProfile(req: AuthRequest, res: Response) {
             user: getPublicUser(user),
         });
     } catch (error) {
+        console.log(error);
         return res.status(500).json({
             message: 'Server error',
         });

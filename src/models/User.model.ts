@@ -1,5 +1,17 @@
 import mongoose from 'mongoose';
 
+const profileBackgroundSchema = new mongoose.Schema({
+    type: {
+        type: String,
+        enum: ['image', 'video'],
+        required: true,
+    },
+    url: {
+        type: String,
+        required: true,
+    },
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
     avatarURL: {
         type: String,
@@ -38,7 +50,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
         trim: true,
-        minlength: 3,
+        minlength: 1,
         maxlength: 24,
     },
 
@@ -58,6 +70,7 @@ const userSchema = new mongoose.Schema({
     elo: {
         type: Number,
         default: 1000,
+        min: 0,
     },
 
     role: {
@@ -77,15 +90,8 @@ const userSchema = new mongoose.Schema({
     },
 
     profileBackground: {
-        type: {
-            type: String,
-            enum: ['image', 'video'],
-            default: 'image',
-        },
-        url: {
-            type: String,
-            default: '',
-        },
+        type: profileBackgroundSchema,
+        default: null,
     },
 
     boardTheme: {
