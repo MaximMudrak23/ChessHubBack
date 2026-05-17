@@ -78,10 +78,19 @@ export async function updateProfile(req: AuthRequest, res: Response) {
 
 export async function updateAvatar(req: AuthRequest, res: Response) {
     try {
-        const {
-            avatarURL,
-            avatarFrameURL,
-        } = req.body;
+        const { avatarFrameURL } = req.body;
+
+        if (!req.file && avatarFrameURL === undefined) {
+            return res.status(400).json({
+                message: 'Avatar data is missing',
+            });
+        }
+
+        if (avatarFrameURL !== undefined && typeof avatarFrameURL !== 'string') {
+            return res.status(400).json({
+                message: 'Avatar frame must be a string',
+            });
+        }
 
         const user = await UserModel.findById(req.userId);
 
@@ -91,8 +100,8 @@ export async function updateAvatar(req: AuthRequest, res: Response) {
             });
         }
 
-        if (avatarURL !== undefined) {
-            user.avatarURL = avatarURL;
+        if (req.file) {
+            user.avatarURL = `/uploads/avatars/${req.file.filename}?v=${Date.now()}`;
         }
 
         if (avatarFrameURL !== undefined) {
@@ -105,7 +114,9 @@ export async function updateAvatar(req: AuthRequest, res: Response) {
             message: 'Avatar updated',
             user: getPublicUser(user),
         });
-    } catch {
+    } catch (error) {
+        console.log('Update avatar error:', error);
+
         return res.status(500).json({
             message: 'Server error',
         });

@@ -23,6 +23,11 @@ const userSchema = new mongoose.Schema({
         default: '',
     },
 
+    unlockedFrames: {
+        type: [String],
+        default: [],
+    },
+
     profileSong: {
         songName: {
             type: String,

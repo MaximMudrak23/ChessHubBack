@@ -9,6 +9,7 @@ export function getPublicUser(user: any) {
         description: user.description,
         avatarURL: user.avatarURL,
         avatarFrameURL: user.avatarFrameURL,
+        unlockedFrames: user.unlockedFrames,
         profileBackground: user.profileBackground,
         profileSong: user.profileSong,
         boardTheme: user.boardTheme,
