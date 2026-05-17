@@ -174,6 +174,26 @@ export async function updateSong(req: AuthRequest, res: Response) {
     try {
         const { profileSong } = req.body;
 
+        if (profileSong === undefined) {
+            return res.status(400).json({
+                message: 'Song data is missing',
+            });
+        }
+
+        if (profileSong !== null) {
+            if (
+                typeof profileSong !== 'object' ||
+                !profileSong.songName ||
+                !profileSong.songAuthor ||
+                !profileSong.songURL ||
+                !profileSong.songAvatarURL
+            ) {
+                return res.status(400).json({
+                    message: 'Song name, author, url and avatar are required',
+                });
+            }
+        }
+
         const user = await UserModel.findById(req.userId);
 
         if (!user) {
@@ -182,9 +202,7 @@ export async function updateSong(req: AuthRequest, res: Response) {
             });
         }
 
-        if (profileSong !== undefined) {
-            user.profileSong = profileSong;
-        }
+        user.profileSong = profileSong;
 
         await user.save();
 
@@ -192,7 +210,9 @@ export async function updateSong(req: AuthRequest, res: Response) {
             message: 'Song updated',
             user: getPublicUser(user),
         });
-    } catch {
+    } catch (error) {
+        console.log('Update song error:', error);
+
         return res.status(500).json({
             message: 'Server error',
         });

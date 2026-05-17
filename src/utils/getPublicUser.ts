@@ -11,6 +11,7 @@ export function getPublicUser(user: any) {
         avatarFrameURL: user.avatarFrameURL,
         unlockedFrames: user.unlockedFrames,
         unlockedProfileBackgrounds: user.unlockedProfileBackgrounds,
+        unlockedProfileSongs: user.unlockedProfileSongs,
         profileBackground: user.profileBackground,
         profileSong: user.profileSong,
         boardTheme: user.boardTheme,

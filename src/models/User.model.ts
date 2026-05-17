@@ -12,6 +12,25 @@ const profileBackgroundSchema = new mongoose.Schema({
     },
 }, { _id: false });
 
+const profileSongSchema = new mongoose.Schema({
+    songName: {
+        type: String,
+        required: true,
+    },
+    songAuthor: {
+        type: String,
+        required: true,
+    },
+    songURL: {
+        type: String,
+        required: true,
+    },
+    songAvatarURL: {
+        type: String,
+        required: true,
+    },
+}, { _id: false });
+
 const userSchema = new mongoose.Schema({
     avatarURL: {
         type: String,
@@ -33,21 +52,14 @@ const userSchema = new mongoose.Schema({
         default: [],
     },
 
+    unlockedProfileSongs: {
+        type: [profileSongSchema],
+        default: [],
+    },
+
     profileSong: {
-        songName: {
-            type: String,
-            default: '',
-        },
-
-        songURL: {
-            type: String,
-            default: '',
-        },
-
-        songAvatarURL: {
-            type: String,
-            default: '',
-        },
+        type: profileSongSchema,
+        default: null,
     },
 
     description: {
