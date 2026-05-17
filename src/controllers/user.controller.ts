@@ -127,10 +127,22 @@ export async function updateBackground(req: AuthRequest, res: Response) {
     try {
         const { profileBackground } = req.body;
 
-        if (!profileBackground || !profileBackground.type || !profileBackground.url) {
-            return res.status(400).json({
-                message: 'Profile background type and url are required',
-            });
+        if (profileBackground !== null && profileBackground !== undefined) {
+            if (
+                typeof profileBackground !== 'object' ||
+                !profileBackground.type ||
+                !profileBackground.url
+            ) {
+                return res.status(400).json({
+                    message: 'Profile background type and url are required',
+                });
+            }
+
+            if (!['image', 'video'].includes(profileBackground.type)) {
+                return res.status(400).json({
+                    message: 'Invalid background type',
+                });
+            }
         }
 
         const user = await UserModel.findById(req.userId);
@@ -141,10 +153,7 @@ export async function updateBackground(req: AuthRequest, res: Response) {
             });
         }
 
-        user.profileBackground = {
-            type: profileBackground.type,
-            url: profileBackground.url,
-        };
+        user.profileBackground = profileBackground ?? null;
 
         await user.save();
 
@@ -152,7 +161,9 @@ export async function updateBackground(req: AuthRequest, res: Response) {
             message: 'Background updated',
             user: getPublicUser(user),
         });
-    } catch {
+    } catch (error) {
+        console.log('Update background error:', error);
+
         return res.status(500).json({
             message: 'Server error',
         });

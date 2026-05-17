@@ -28,6 +28,11 @@ const userSchema = new mongoose.Schema({
         default: [],
     },
 
+    unlockedProfileBackgrounds: {
+        type: [profileBackgroundSchema],
+        default: [],
+    },
+
     profileSong: {
         songName: {
             type: String,
