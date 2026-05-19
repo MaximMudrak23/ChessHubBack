@@ -1,5 +1,10 @@
 import mongoose from 'mongoose';
 
+const userIconSchema = new mongoose.Schema({
+    title: String,
+    iconURL: String,
+}, { _id: false });
+
 const profileBackgroundSchema = new mongoose.Schema({
     type: {
         type: String,
@@ -102,12 +107,7 @@ const userSchema = new mongoose.Schema({
     },
 
     userIcons: {
-        type: [
-            {
-                title: String,
-                iconURL: String,
-            }
-        ],
+        type: [userIconSchema],
         default: [],
     },
 

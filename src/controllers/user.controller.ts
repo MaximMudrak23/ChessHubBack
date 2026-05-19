@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { UserModel } from '../models/User.model';
+import { BotModel } from '../models/Bot.model';
 import { getPublicUser } from '../utils/getPublicUser';
 
 export async function updateProfile(req: AuthRequest, res: Response) {
@@ -238,16 +239,39 @@ export async function searchUsers(req: AuthRequest, res: Response) {
             name: { $regex: q, $options: 'i' },
         };
 
-        const [users, total] = await Promise.all([
-            UserModel.find(filter)
-                .skip(skip)
-                .limit(limit),
-            UserModel.countDocuments(filter),
+        const [users, bots] = await Promise.all([
+            UserModel.find(filter),
+            BotModel.find(filter),
         ]);
 
+        const normalizedUsers = users.map(user => ({
+            ...getPublicUser(user),
+            isBot: false,
+        }));
+
+        const normalizedBots = bots.map(bot => ({
+            id: bot._id,
+            name: bot.name,
+            email: '',
+            elo: bot.elo,
+            role: 'user',
+            userIcons: bot.userIcons,
+            description: bot.description,
+            avatarURL: bot.avatarURL,
+            avatarFrameURL: bot.avatarFrameURL,
+            profileBackground: bot.profileBackground,
+            profileSong: bot.profileSong,
+            boardTheme: 'water',
+            menuBackground: 'default',
+            isBot: true,
+        }));
+
+        const results = [...normalizedUsers, ...normalizedBots];
+        const paginatedResults = results.slice(skip, skip + limit);
+
         return res.status(200).json({
-            users: users.map(getPublicUser),
-            totalPages: Math.ceil(total / limit),
+            users: paginatedResults,
+            totalPages: Math.ceil(results.length / limit),
         });
     } catch (error) {
         console.log('Search users error:', error);
@@ -264,14 +288,40 @@ export async function getUserById(req: AuthRequest, res: Response) {
 
         const user = await UserModel.findById(id);
 
-        if (!user) {
+        if (user) {
+            return res.status(200).json({
+                user: {
+                    ...getPublicUser(user),
+                    isBot: false,
+                },
+            });
+        }
+
+        const bot = await BotModel.findById(id);
+
+        if (!bot) {
             return res.status(404).json({
                 message: 'User not found',
             });
         }
 
         return res.status(200).json({
-            user: getPublicUser(user),
+            user: {
+                id: bot._id,
+                name: bot.name,
+                email: '',
+                elo: bot.elo,
+                role: 'user',
+                userIcons: bot.userIcons,
+                description: bot.description,
+                avatarURL: bot.avatarURL,
+                avatarFrameURL: bot.avatarFrameURL,
+                profileBackground: bot.profileBackground,
+                profileSong: bot.profileSong,
+                boardTheme: 'water',
+                menuBackground: 'default',
+                isBot: true,
+            },
         });
     } catch (error) {
         console.log('Get user by id error:', error);
