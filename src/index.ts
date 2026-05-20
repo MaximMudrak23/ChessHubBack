@@ -6,8 +6,8 @@ import path from 'node:path';
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
 import adminRoutes from './routes/admin.routes';
+import gameRoutes from './routes/game.routes';
 import { connectDB } from './config/db';
-
 
 dotenv.config();
 
@@ -21,6 +21,7 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
 app.use('/admin', adminRoutes);
+app.use('/game', gameRoutes);
 
 app.get('/', (_, res) => {
     res.json({
