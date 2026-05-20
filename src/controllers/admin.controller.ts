@@ -4,6 +4,7 @@ import { UserModel } from '../models/User.model';
 import { getPublicUser } from '../utils/getPublicUser';
 import { KeyModel } from '../models/Key.model';
 import { BotModel } from '../models/Bot.model';
+import { scheduleBotSearch } from '../services/botMatchmaking.service';
 import crypto from 'node:crypto';
 
 export async function getAdminUsers(req: AuthRequest, res: Response) {
@@ -144,6 +145,8 @@ export async function createAdminBot(req: AuthRequest, res: Response) {
             botType: 'stockfish',
             skillLevel: skill,
         });
+
+        scheduleBotSearch(bot._id.toString());
 
         return res.status(201).json({
             message: 'Bot created',
