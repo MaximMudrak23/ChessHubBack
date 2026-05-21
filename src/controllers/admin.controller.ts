@@ -5,6 +5,7 @@ import { getPublicUser } from '../utils/getPublicUser';
 import { KeyModel } from '../models/Key.model';
 import { BotModel } from '../models/Bot.model';
 import { scheduleBotSearch } from '../services/botMatchmaking.service';
+import { MatchTicketModel } from '../models/MatchTicket.model';
 import crypto from 'node:crypto';
 
 export async function getAdminUsers(req: AuthRequest, res: Response) {
@@ -150,7 +151,7 @@ export async function createAdminBot(req: AuthRequest, res: Response) {
 
         return res.status(201).json({
             message: 'Bot created',
-            bot,
+            bot: getPublicBot(bot),
         });
     } catch (error) {
         console.log('Create admin bot error:', error);
@@ -163,7 +164,7 @@ export async function createAdminBot(req: AuthRequest, res: Response) {
 
 function getPublicBot(bot: any) {
     return {
-        id: bot._id,
+        id: bot._id.toString(),
         isBot: true,
         botType: bot.botType,
         name: bot.name,
@@ -201,7 +202,7 @@ export async function deleteAdminBot(req: AuthRequest, res: Response) {
     try {
         const { id } = req.params;
 
-        const bot = await BotModel.findByIdAndDelete(id);
+        const bot = await BotModel.findById(id);
 
         if (!bot) {
             return res.status(404).json({
@@ -209,11 +210,109 @@ export async function deleteAdminBot(req: AuthRequest, res: Response) {
             });
         }
 
+        if (bot.status === 'playing') {
+            return res.status(400).json({
+                message: 'Cannot delete bot while playing',
+            });
+        }
+
+        await MatchTicketModel.deleteMany({
+            ownerType: 'bot',
+            ownerId: bot._id,
+        });
+
+        await bot.deleteOne();
+
         return res.status(200).json({
             message: 'Bot deleted',
         });
     } catch (error) {
         console.log('Delete admin bot error:', error);
+
+        return res.status(500).json({
+            message: 'Server error',
+        });
+    }
+}
+
+export async function disableAdminBot(req: AuthRequest, res: Response) {
+    try {
+        const { id } = req.params;
+
+        const bot = await BotModel.findById(id);
+
+        if (!bot) {
+            return res.status(404).json({
+                message: 'Bot not found',
+            });
+        }
+
+        if (bot.status === 'disabled') {
+            return res.status(400).json({
+                message: 'Bot already disabled',
+            });
+        }
+
+        if (bot.status === 'playing') {
+            bot.status = 'disabled';
+            await bot.save();
+
+            return res.status(200).json({
+                message: 'Bot will be disabled after game',
+                bot: getPublicBot(bot),
+            });
+        }
+
+        await MatchTicketModel.deleteMany({
+            ownerType: 'bot',
+            ownerId: bot._id,
+        });
+
+        bot.status = 'disabled';
+        await bot.save();
+
+        return res.status(200).json({
+            message: 'Bot disabled',
+            bot: getPublicBot(bot),
+        });
+    } catch (error) {
+        console.log('Disable bot error:', error);
+
+        return res.status(500).json({
+            message: 'Server error',
+        });
+    }
+}
+
+export async function activateAdminBot(req: AuthRequest, res: Response) {
+    try {
+        const { id } = req.params;
+
+        const bot = await BotModel.findById(id);
+
+        if (!bot) {
+            return res.status(404).json({
+                message: 'Bot not found',
+            });
+        }
+
+        if (bot.status !== 'disabled') {
+            return res.status(400).json({
+                message: 'Bot is not disabled',
+            });
+        }
+
+        bot.status = 'idle';
+        await bot.save();
+
+        scheduleBotSearch(bot._id.toString());
+
+        return res.status(200).json({
+            message: 'Bot activated',
+            bot: getPublicBot(bot),
+        });
+    } catch (error) {
+        console.log('Activate bot error:', error);
 
         return res.status(500).json({
             message: 'Server error',

@@ -102,6 +102,8 @@ export async function updateAvatar(req: AuthRequest, res: Response) {
         }
 
         if (req.file) {
+            deleteUploadedFile(user.avatarURL);
+            
             user.avatarURL = `/uploads/avatars/${req.file.filename}?v=${Date.now()}`;
         }
 
@@ -122,6 +124,25 @@ export async function updateAvatar(req: AuthRequest, res: Response) {
             message: 'Server error',
         });
     }
+}
+
+import fs from 'node:fs';
+import path from 'node:path';
+
+function deleteUploadedFile(fileURL?: string) {
+    if (!fileURL) return;
+
+    const cleanURL = fileURL.split('?')[0];
+
+    if (!cleanURL.startsWith('/uploads/')) return;
+
+    const filePath = path.join(process.cwd(), cleanURL);
+
+    fs.unlink(filePath, error => {
+        if (error && error.code !== 'ENOENT') {
+            console.log('Delete file error:', error);
+        }
+    });
 }
 
 export async function updateBackground(req: AuthRequest, res: Response) {
