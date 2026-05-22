@@ -17,7 +17,7 @@ const storage = multer.diskStorage({
     filename: (req: AuthRequest, file, cb) => {
         const ext = path.extname(file.originalname);
 
-        cb(null, `avatar-${req.userId}${ext}`);
+        cb(null, `avatar-${req.userId}-${Date.now()}${ext}`);
     },
 });
 

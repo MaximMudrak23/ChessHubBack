@@ -4,7 +4,6 @@ import { MatchTicketModel } from '../models/MatchTicket.model';
 function getRandomDelay() {
     return Math.floor(Math.random() * 10000) + 10000;
 
-    // потом заменишь на 1–5 минут:
     // return Math.floor(Math.random() * 240000) + 60000;
 }
 
@@ -39,6 +38,4 @@ export async function startIdleBotsSearch() {
     for (const bot of idleBots) {
         scheduleBotSearch(bot._id.toString());
     }
-
-    console.log(`BOT SEARCH SCHEDULED: ${idleBots.length}`);
 }

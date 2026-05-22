@@ -124,8 +124,7 @@ const userSchema = new mongoose.Schema({
 
     menuBackground: {
         type: String,
-        enum: ['default', 'red-bull', 'wood'],
-        default: 'default',
+        default: 'default.jpg',
     },
 }, {
     timestamps: true,
