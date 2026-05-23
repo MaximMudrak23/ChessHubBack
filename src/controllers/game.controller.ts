@@ -318,3 +318,25 @@ export async function getGameById(req: Request, res: Response) {
         });
     }
 }
+
+export async function getActiveGame(req: AuthRequest, res: Response) {
+    try {
+        const activeGame = await GameModel.findOne({
+            status: 'active',
+            $or: [
+                { 'white.playerId': req.userId },
+                { 'black.playerId': req.userId },
+            ],
+        });
+
+        return res.status(200).json({
+            game: activeGame ?? null,
+        });
+    } catch (error) {
+        console.log('Get active game error:', error);
+
+        return res.status(500).json({
+            message: 'Server error',
+        });
+    }
+}
