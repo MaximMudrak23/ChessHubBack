@@ -32,6 +32,22 @@ const gamePlayerSchema = new mongoose.Schema({
     },
 }, { _id: false });
 
+const pieceSchema = new mongoose.Schema({
+    id: String,
+    piece: String,
+    square: String,
+    hasMoved: {
+        type: Boolean,
+        default: false,
+    },
+}, { _id: false });
+
+const lastMoveSchema = new mongoose.Schema({
+    piece: String,
+    from: String,
+    to: String,
+}, { _id: false });
+
 const gameSchema = new mongoose.Schema({
     white: {
         type: gamePlayerSchema,
@@ -51,6 +67,31 @@ const gameSchema = new mongoose.Schema({
 
     moves: {
         type: Array,
+        default: [],
+    },
+
+    pieces: {
+        type: [pieceSchema],
+        default: [],
+    },
+
+    lastMove: {
+        type: lastMoveSchema,
+        default: null,
+    },
+
+    halfmoveClock: {
+        type: Number,
+        default: 0,
+    },
+
+    fullmoveNumber: {
+        type: Number,
+        default: 1,
+    },
+
+    positionHistory: {
+        type: [String],
         default: [],
     },
 

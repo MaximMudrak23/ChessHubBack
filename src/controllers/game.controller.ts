@@ -8,6 +8,7 @@ import { BotModel } from '../models/Bot.model';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { getPublicUser } from '../utils/getPublicUser';
 import { scheduleBotSearch } from '../services/botMatchmaking.service';
+import { initialPieces } from '../chess/initialPieces';
 
 export async function getBotMove(req: Request, res: Response) {
     try {
@@ -158,6 +159,11 @@ export async function findGame(req: AuthRequest, res: Response) {
             black: secondSide === 'black' ? secondPlayer : firstPlayer,
             currentTurn: 'white',
             moves: [],
+            pieces: initialPieces,
+            lastMove: null,
+            halfmoveClock: 0,
+            fullmoveNumber: 1,
+            positionHistory: [],
             status: 'active',
         });
 
@@ -338,5 +344,43 @@ export async function getActiveGame(req: AuthRequest, res: Response) {
         return res.status(500).json({
             message: 'Server error',
         });
+    }
+}
+
+export async function saveGameState(req: AuthRequest, res: Response) {
+    try {
+        const {
+            gameId,
+            pieces,
+            currentTurn,
+            moves,
+            lastMove,
+            halfmoveClock,
+            fullmoveNumber,
+            positionHistory,
+        } = req.body;
+
+        const game = await GameModel.findByIdAndUpdate(
+            gameId,
+            {
+                pieces,
+                currentTurn,
+                moves,
+                lastMove,
+                halfmoveClock,
+                fullmoveNumber,
+                positionHistory,
+            },
+            { new: true },
+        );
+
+        if (!game) {
+            return res.status(404).json({ message: 'Game not found' });
+        }
+
+        return res.status(200).json({ game });
+    } catch (error) {
+        console.log('Save game state error:', error);
+        return res.status(500).json({ message: 'Server error' });
     }
 }
