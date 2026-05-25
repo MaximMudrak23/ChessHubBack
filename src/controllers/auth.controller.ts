@@ -21,7 +21,7 @@ export async function register(req: Request, res: Response) {
             user: result.user,
         });
     } catch (error: any) {
-        console.log('Register error:', error);
+        console.log('REGISTER ERROR:', error);
 
         if (error.message === 'INVALID KEY') {
             return res.status(400).json({ message: 'Invalid invite key' });

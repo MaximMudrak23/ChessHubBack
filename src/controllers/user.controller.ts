@@ -3,244 +3,139 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { UserModel } from '../models/User.model';
 import { BotModel } from '../models/Bot.model';
 import { getPublicUser } from '../utils/getPublicUser';
+import { userService } from '../services/user.service';
 
 export async function updateProfile(req: AuthRequest, res: Response) {
     try {
         const { name, description } = req.body;
+        const existingUserID = req.userId;
 
-        if (name === undefined && description === undefined) {
-            return res.status(400).json({
-                message: 'Profile data is missing',
-            });
-        }
+        if (!existingUserID) return res.status(401).json({ message: 'Unauthorized' });
 
-        if (name !== undefined && typeof name !== 'string') {
-            return res.status(400).json({
-                message: 'Name must be a string',
-            })
-        }
-
-        if (description !== undefined && typeof description !== 'string') {
-            return res.status(400).json({
-                message: 'Description must be a string',
-            })
-        }
+        if (typeof name !== 'string') return res.status(400).json({ message: 'Name must be a string' });
+        if (typeof description !== 'string') return res.status(400).json({ message: 'Description must be a string' });
         
         const trimmedName = name?.trim();
         const trimmedDescription = description?.trim();
+        
+        if (!trimmedName) return res.status(400).json({ message: 'Name is required' });
 
-        if (name !== undefined && !trimmedName) {
-            return res.status(400).json({
-                message: 'Name is required',
-            });
-        }
+        if (trimmedName.length < 1 || trimmedName.length > 24) return res.status(400).json({ message: 'Name must be between 1 and 24 characters' });
+        if (trimmedDescription.length > 300) return res.status(400).json({ message: 'Description max length is 300 characters' });
 
-        if (name !== undefined && (trimmedName.length < 1 || trimmedName.length > 24)) {
-            return res.status(400).json({
-                message: 'Name must be between 1 and 24 characters',
-            });
-        }
-
-        if (description !== undefined && trimmedDescription.length > 300) {
-            return res.status(400).json({
-                message: 'Description max length is 300 characters',
-            });
-        }
-
-        const user = await UserModel.findById(req.userId);
-
-        if (!user) {
-            return res.status(404).json({
-                message: 'User not found',
-            });
-        }
-
-        if (name !== undefined) {
-            user.name = trimmedName;
-        }
-
-        if (description !== undefined) {
-            user.description = trimmedDescription;
-        }
-
-        await user.save();
+        const updatedUser = await userService.updateProfile(existingUserID, trimmedName, trimmedDescription);
 
         return res.status(200).json({
             message: 'Profile updated',
-            user: getPublicUser(user),
+            user: updatedUser,
         });
-    } catch (error) {
-        console.log(error);
-        return res.status(500).json({
-            message: 'Server error',
-        });
+    } catch (error: any) {
+        console.log('UPDATE PROFILE ERROR:', error);
+
+        if (error.message === 'USER NOT FOUND') {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        return res.status(500).json({ message: 'Server error' });
     }
 }
 
 export async function updateAvatar(req: AuthRequest, res: Response) {
     try {
         const { avatarFrameURL } = req.body;
+        const existingUserID = req.userId;
 
-        if (!req.file && avatarFrameURL === undefined) {
-            return res.status(400).json({
-                message: 'Avatar data is missing',
-            });
-        }
+        if (!existingUserID) return res.status(401).json({ message: 'Unauthorized' });
 
-        if (avatarFrameURL !== undefined && typeof avatarFrameURL !== 'string') {
-            return res.status(400).json({
-                message: 'Avatar frame must be a string',
-            });
-        }
+        if(!req.file && avatarFrameURL === undefined) return res.status(400).json({ message: 'Avatar data is missing' });
 
-        const user = await UserModel.findById(req.userId);
+        if (avatarFrameURL !== undefined && typeof avatarFrameURL !== 'string') return res.status(400).json({ message: 'Avatar frame must be a string' });
 
-        if (!user) {
-            return res.status(404).json({
-                message: 'User not found',
-            });
-        }
-
-        if (req.file) {
-            deleteUploadedFile(user.avatarURL);
-            
-            user.avatarURL = `/uploads/avatars/${req.file.filename}?v=${Date.now()}`;
-        }
-
-        if (avatarFrameURL !== undefined) {
-            user.avatarFrameURL = avatarFrameURL;
-        }
-
-        await user.save();
+        const filename = req.file?.filename;
+        const updatedUser = await userService.updateAvatar(existingUserID, filename, avatarFrameURL);
 
         return res.status(200).json({
             message: 'Avatar updated',
-            user: getPublicUser(user),
+            user: updatedUser,
         });
-    } catch (error) {
-        console.log('Update avatar error:', error);
+    } catch (error: any) {
+        console.log('UPDATE AVATAR ERROR:', error);
 
-        return res.status(500).json({
-            message: 'Server error',
-        });
-    }
-}
-
-import fs from 'node:fs';
-import path from 'node:path';
-
-function deleteUploadedFile(fileURL?: string) {
-    if (!fileURL) return;
-
-    const cleanURL = fileURL.split('?')[0];
-
-    if (!cleanURL.startsWith('/uploads/')) return;
-
-    const filePath = path.join(process.cwd(), cleanURL);
-
-    fs.unlink(filePath, error => {
-        if (error && error.code !== 'ENOENT') {
-            console.log('Delete file error:', error);
+        if (error.message === 'USER NOT FOUND') {
+            return res.status(404).json({ message: 'User not found' });
         }
-    });
+
+        return res.status(500).json({ message: 'Server error' });
+    }
 }
 
 export async function updateBackground(req: AuthRequest, res: Response) {
     try {
         const { profileBackground } = req.body;
+        const existingUserID = req.userId;
+
+        if (!existingUserID) return res.status(401).json({ message: 'Unauthorized' });
 
         if (profileBackground !== null && profileBackground !== undefined) {
-            if (
-                typeof profileBackground !== 'object' ||
-                !profileBackground.type ||
-                !profileBackground.url
-            ) {
-                return res.status(400).json({
-                    message: 'Profile background type and url are required',
-                });
+            if (typeof profileBackground !== 'object' || !profileBackground.type || !profileBackground.url) {
+                return res.status(400).json({ message: 'Profile background type and url are required' });
             }
 
             if (!['image', 'video'].includes(profileBackground.type)) {
-                return res.status(400).json({
-                    message: 'Invalid background type',
-                });
+                return res.status(400).json({ message: 'Invalid background type' });
             }
         }
 
-        const user = await UserModel.findById(req.userId);
-
-        if (!user) {
-            return res.status(404).json({
-                message: 'User not found',
-            });
-        }
-
-        user.profileBackground = profileBackground ?? null;
-
-        await user.save();
+        const updatedUser = await userService.updateBackground(existingUserID, profileBackground);
 
         return res.status(200).json({
             message: 'Background updated',
-            user: getPublicUser(user),
+            user: updatedUser,
         });
-    } catch (error) {
-        console.log('Update background error:', error);
+    } catch (error: any) {
+        console.log('UPDATE BACKGROUND ERROR:', error);
 
-        return res.status(500).json({
-            message: 'Server error',
-        });
+        if (error.message === 'USER NOT FOUND') {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        return res.status(500).json({ message: 'Server error' });
     }
 }
 
 export async function updateSong(req: AuthRequest, res: Response) {
     try {
         const { profileSong } = req.body;
+        const existingUserID = req.userId;
 
-        if (profileSong === undefined) {
-            return res.status(400).json({
-                message: 'Song data is missing',
-            });
-        }
+        if (!existingUserID) return res.status(401).json({ message: 'Unauthorized' });
+
+        if (profileSong === undefined) return res.status(400).json({ message: 'Song data is missing' });
 
         if (profileSong !== null) {
-            if (
-                typeof profileSong !== 'object' ||
-                !profileSong.songName ||
-                !profileSong.songAuthor ||
-                !profileSong.songURL ||
-                !profileSong.songAvatarURL
-            ) {
-                return res.status(400).json({
-                    message: 'Song name, author, url and avatar are required',
-                });
+            if (typeof profileSong !== 'object' || !profileSong.songName || !profileSong.songAuthor || !profileSong.songURL || !profileSong.songAvatarURL) {
+                return res.status(400).json({ message: 'Song name, author, url and avatar are required' });
             }
         }
 
-        const user = await UserModel.findById(req.userId);
-
-        if (!user) {
-            return res.status(404).json({
-                message: 'User not found',
-            });
-        }
-
-        user.profileSong = profileSong;
-
-        await user.save();
+        const updatedUser = await userService.updateSong(existingUserID, profileSong);
 
         return res.status(200).json({
             message: 'Song updated',
-            user: getPublicUser(user),
+            user: updatedUser,
         });
-    } catch (error) {
-        console.log('Update song error:', error);
+    } catch (error: any) {
+        console.log('UPDATE SONG ERROR:', error);
 
-        return res.status(500).json({
-            message: 'Server error',
-        });
+        if (error.message === 'USER NOT FOUND') {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        return res.status(500).json({ message: 'Server error' });
     }
 }
 
+// это не трогалось
 export async function searchUsers(req: AuthRequest, res: Response) {
     try {
         const q = String(req.query.q || '').trim();

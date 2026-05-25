@@ -39,3 +39,5 @@ export async function startIdleBotsSearch() {
         scheduleBotSearch(bot._id.toString());
     }
 }
+
+// это я считаю нужно переназвать в bot.service и чисто вся логика ботов

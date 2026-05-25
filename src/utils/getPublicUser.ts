@@ -1,4 +1,4 @@
-export function getPublicUser(user: any) {
+export function getPublicUser(user: any) { // this should be in special dto file
     return {
         id: user._id,
         name: user.name,
