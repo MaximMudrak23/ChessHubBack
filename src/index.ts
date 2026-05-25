@@ -9,6 +9,7 @@ import adminRoutes from './routes/admin.routes';
 import gameRoutes from './routes/game.routes';
 
 import { connectDB } from './config/db';
+import { startIdleBotsSearch } from './services/botMatchmaking.service';
 
 dotenv.config();
 
@@ -30,8 +31,26 @@ app.get('/', (_, res) => {
     });
 });
 
-connectDB();
+async function start() {
+    try {
+        await connectDB();
 
-app.listen(3000, () => {
-    console.log('SERVER STARTED');
-});
+        const PORT = process.env.PORT || 3000;
+        app.listen(PORT, async () => {
+            console.log(`SERVER STARTED ON PORT ${PORT}`);
+
+            try {
+                await startIdleBotsSearch();
+                console.log('IDLE BOTS SEARCH STARTED');
+            } catch (botError) {
+                console.log('FAILED TO START BOTS SEARCH:', botError);
+            }
+        });
+
+    } catch (error) {
+        console.log('SERVER START FAILED:', error);
+        process.exit(1);
+    }
+}
+
+start()

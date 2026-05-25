@@ -1,12 +1,17 @@
 import mongoose from 'mongoose';
-import { startIdleBotsSearch } from '../services/botMatchmaking.service';
 
 export async function connectDB() {
     try {
-        await mongoose.connect(process.env.MONGO_URI!);
+        const mongoURI = process.env.MONGO_URI;
+
+        if (!mongoURI) {
+            throw new Error('MONGO_URI is missing');
+        }
+
+        await mongoose.connect(mongoURI);
         console.log('MONGO CONNECTED');
-        await startIdleBotsSearch();
     } catch (error) {
         console.log('MONGO ERROR:', error);
+        throw error;
     }
 }
