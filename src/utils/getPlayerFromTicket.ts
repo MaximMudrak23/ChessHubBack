@@ -1,6 +1,6 @@
 import { UserModel } from "../models/User.model";
 import { BotModel } from "../models/Bot.model";
-import { getPlayerIcons } from "./getPlayerIcons";
+import { getPlayerIconsDTO } from "../dtos/player.dto";
 
 export async function getPlayerFromTicket(ticket: any) {
     const entity = ticket.ownerType === 'user'
@@ -16,7 +16,7 @@ export async function getPlayerFromTicket(ticket: any) {
         elo: entity.elo,
         avatarURL: entity.avatarURL,
         avatarFrameURL: entity.avatarFrameURL,
-        userIcons: getPlayerIcons(entity),
+        userIcons: getPlayerIconsDTO(entity),
         skillLevel: ticket.ownerType === 'bot' && 'skillLevel' in entity ? entity.skillLevel : null,
     };
 }

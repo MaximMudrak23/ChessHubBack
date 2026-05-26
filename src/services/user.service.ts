@@ -1,13 +1,13 @@
 import fs from "node:fs"
 import path from "node:path"
 import { UserModel } from "../models/User.model";
-import { getPublicUser } from "../utils/getPublicUser"; // temporarily
+import { getSelfUserDTO } from "../dtos/user.dto";
 
 class UserService {
-    async getUserService(userID: string) {
+    async getUserService(userID: string) { // only for /me
         const existingUser = await UserModel.findById(userID);
         if (!existingUser) throw new Error('USER NOT FOUND');
-        return getPublicUser(existingUser);
+        return getSelfUserDTO(existingUser);
     }
 
     private deleteUploadedFile(fileURL: string) {
@@ -29,7 +29,7 @@ class UserService {
         if (description || description === '') existingUser.description = description;
 
         await existingUser.save();
-        return getPublicUser(existingUser);
+        return getSelfUserDTO(existingUser);
     }
 
     async updateAvatar(userID: string, filename?: string, avatarFrameURL?: string) {
@@ -44,7 +44,7 @@ class UserService {
         if (avatarFrameURL) existingUser.avatarFrameURL = avatarFrameURL;
 
         await existingUser.save();
-        return getPublicUser(existingUser);
+        return getSelfUserDTO(existingUser);
     }
 
     async updateBackground(userID: string, profileBackground: any) { // temporarily any
@@ -54,7 +54,7 @@ class UserService {
         existingUser.profileBackground = profileBackground ?? null;
         
         await existingUser.save();
-        return getPublicUser(existingUser);
+        return getSelfUserDTO(existingUser);
     }
 
     async updateSong(userID: string, profileSong: any) { // temporarily any
@@ -64,7 +64,7 @@ class UserService {
         existingUser.profileSong = profileSong;
 
         await existingUser.save();
-        return getPublicUser(existingUser);
+        return getSelfUserDTO(existingUser);
     }
 }
 

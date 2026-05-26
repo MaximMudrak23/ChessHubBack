@@ -3,15 +3,15 @@ import { UserModel } from '../models/User.model'
 import { BotModel } from '../models/Bot.model'
 import { KeyModel } from '../models/Key.model';
 import { MatchTicketModel } from '../models/MatchTicket.model';
-import { getPublicUser } from '../utils/getPublicUser';
-import { getPublicBot } from '../utils/getPublicBot';
-import { scheduleBotSearch } from './botMatchmaking.service';
+import { botService } from './bot.service';
+import { getPrivateUserDTO } from '../dtos/user.dto';
+import { getPrivateBotDTO } from '../dtos/bot.dto';
 
 class AdminService {
     // Users Tools
     async getAllUsers() {
         const existingUsers = await UserModel.find().sort({ createdAt: -1 });
-        return existingUsers.map(getPublicUser);
+        return existingUsers.map(getPrivateUserDTO);
     }
 
     async deleteUser(userID: string) {
@@ -23,7 +23,7 @@ class AdminService {
     // Bots tools
     async getAllBots() {
         const existingBots = await BotModel.find().sort({ createdAt: -1 });
-        return existingBots.map(bot => getPublicBot(bot));
+        return existingBots.map(bot => getPrivateBotDTO(bot));
     }
 
     async createBot(name: string, skillLevel: number) {
@@ -33,8 +33,8 @@ class AdminService {
             skillLevel,
         });
 
-        scheduleBotSearch(newBot._id.toString());
-        return getPublicBot(newBot);
+        botService.scheduleBotSearch(newBot._id.toString());
+        return getPrivateBotDTO(newBot);
     }
 
     async deleteBot(botID: string) {
@@ -61,7 +61,7 @@ class AdminService {
         if (existingBot.status === 'playing') {
             existingBot.status = 'disabled';
             await existingBot.save();
-            return getPublicBot(existingBot);
+            return getPrivateBotDTO(existingBot);
         }
 
         await MatchTicketModel.deleteMany({
@@ -71,7 +71,7 @@ class AdminService {
 
         existingBot.status = 'disabled';
         await existingBot.save();
-        return getPublicBot(existingBot);
+        return getPrivateBotDTO(existingBot);
     }
 
     async activateBot(botID: string) {
@@ -83,8 +83,8 @@ class AdminService {
         existingBot.status = 'idle';
         await existingBot.save();
 
-        scheduleBotSearch(existingBot._id.toString());
-        return getPublicBot(existingBot);
+        botService.scheduleBotSearch(existingBot._id.toString());
+        return getPrivateBotDTO(existingBot);
     }
 
     // Keys Tools

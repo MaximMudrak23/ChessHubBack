@@ -2,7 +2,7 @@ import bcrypt from 'bcrypt'
 import { UserModel } from '../models/User.model'
 import { KeyModel } from '../models/Key.model'
 import { createToken } from '../utils/createToken'
-import { getPublicUser } from '../utils/getPublicUser' // temporarily
+import { getSelfUserDTO } from '../dtos/user.dto'
 
 class AuthService {
     async register(email: string, password: string, key: string) {
@@ -26,7 +26,7 @@ class AuthService {
 
         return {
             token,
-            user: getPublicUser(newUser),
+            user: getSelfUserDTO(newUser),
         };
     }
 
@@ -41,7 +41,7 @@ class AuthService {
 
         return {
             token,
-            user: getPublicUser(existingUser),
+            user: getSelfUserDTO(existingUser),
         }
     }
 }

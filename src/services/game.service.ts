@@ -2,11 +2,12 @@ import { UserModel } from "../models/User.model";
 import { GameModel } from "../models/Game.model";
 import { BotModel } from "../models/Bot.model";
 import { MatchTicketModel } from "../models/MatchTicket.model";
-import { scheduleBotSearch } from "./botMatchmaking.service";
+import { botService } from "./bot.service";
 import { initialPieces } from "../chess/initialPieces";
-import { getPublicUser } from "../utils/getPublicUser";
 import { getRandomSides } from "../utils/getRandomSides";
 import { getPlayerFromTicket } from "../utils/getPlayerFromTicket";
+// import { getPublicUser } from "../utils/getPublicUser";
+import { getSelfUserDTO } from "../dtos/user.dto";
 
 class GameService {
     private getEloRange(searchStartedAt: Date): number {
@@ -119,13 +120,16 @@ class GameService {
 
         if (existingGame.status === 'finished') {
             const currentUser = await UserModel.findById(userID);
-            return { existingGame, user: currentUser ? getPublicUser(currentUser) : null };
+            return {
+                game: existingGame,
+                user: currentUser ? getSelfUserDTO(currentUser) : null
+            };
         }
 
         if (winner !== 'white' && winner !== 'black' && winner !== 'draw' && winner !== null) throw new Error('INVALID WINNER TYPE');
 
         existingGame.status = 'finished';
-        existingGame.winner = winner;
+        existingGame.winner = winner as 'white' | 'black' | 'draw' | null;
         existingGame.finishedReason = finishedReason;
         existingGame.moves = moves ?? [];
         await existingGame.save();
@@ -134,7 +138,7 @@ class GameService {
         for (const player of players) {
             if (player.playerType === 'bot') {
                 await BotModel.findByIdAndUpdate(player.playerId, { status: 'idle' });
-                scheduleBotSearch(player.playerId.toString());
+                botService.scheduleBotSearch(player.playerId.toString());
             }
         }
 
@@ -151,7 +155,7 @@ class GameService {
         const updatedUser = await UserModel.findById(userID);
         return {
             game: existingGame,
-            user: updatedUser ? getPublicUser(updatedUser) : null,
+            user: updatedUser ? getSelfUserDTO(updatedUser) : null,
         };
     }
 

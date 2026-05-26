@@ -5,11 +5,12 @@ import path from 'node:path';
 
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
+import playerRoutes from './routes/player.routes';
 import adminRoutes from './routes/admin.routes';
 import gameRoutes from './routes/game.routes';
 
 import { connectDB } from './config/db';
-import { startIdleBotsSearch } from './services/botMatchmaking.service';
+import { botService } from './services/bot.service';
 
 dotenv.config();
 
@@ -22,6 +23,7 @@ app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 
 app.use('/auth', authRoutes);
 app.use('/users', userRoutes);
+app.use('/players', playerRoutes);
 app.use('/admin', adminRoutes);
 app.use('/game', gameRoutes);
 
@@ -40,7 +42,7 @@ async function start() {
             console.log(`SERVER STARTED ON PORT ${PORT}`);
 
             try {
-                await startIdleBotsSearch();
+                await botService.startIdleBotsSearch();
                 console.log('IDLE BOTS SEARCH STARTED');
             } catch (botError) {
                 console.log('FAILED TO START BOTS SEARCH:', botError);
