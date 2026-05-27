@@ -1,4 +1,6 @@
-export const initialPieces = [
+import { PieceType } from "./types/chess.types";
+
+export const initialPieces: PieceType[] = [
     { id: 'br1', piece: 'br', square: 'a8' },
     { id: 'bn1', piece: 'bn', square: 'b8' },
     { id: 'bb1', piece: 'bb', square: 'c8' },

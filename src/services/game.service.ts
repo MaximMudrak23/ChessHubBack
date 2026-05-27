@@ -6,8 +6,10 @@ import { botService } from "./bot.service";
 import { initialPieces } from "../chess/initialPieces";
 import { getRandomSides } from "../utils/getRandomSides";
 import { getPlayerFromTicket } from "../utils/getPlayerFromTicket";
-// import { getPublicUser } from "../utils/getPublicUser";
 import { getSelfUserDTO } from "../dtos/user.dto";
+import { applyMoveToGameState } from "../chess/applyMoveToGameState";
+import type { Square } from "../chess/types/chess.types";
+import { normalizePieces } from "../chess/lib/normalizePieces";
 
 class GameService {
     private getEloRange(searchStartedAt: Date): number {
@@ -175,17 +177,50 @@ class GameService {
         });
     }
 
-    async saveGameState(state: any) {
-        const { gameId, pieces, currentTurn, moves, lastMove, halfmoveClock, fullmoveNumber, positionHistory } = state;
-
-        const existingGame = await GameModel.findByIdAndUpdate(
-            gameId,
-            { pieces, currentTurn, moves, lastMove, halfmoveClock, fullmoveNumber, positionHistory },
-            { returnDocument: 'after' }
-        );
-
+    async makeMove(gameId: string, pieceID: string, targetSquare: Square) {
+        const existingGame = await GameModel.findById(gameId);
         if (!existingGame) throw new Error('GAME NOT FOUND');
-        return existingGame;
+        if (existingGame.status !== 'active') throw new Error('GAME NOT ACTIVE');
+
+        const pieces = normalizePieces(existingGame.pieces);
+
+        const result = applyMoveToGameState({
+            pieces,
+            currentTurn: existingGame.currentTurn as any,
+            moves: existingGame.moves as any,
+            lastMove: existingGame.lastMove as any,
+            halfmoveClock: existingGame.halfmoveClock,
+            fullmoveNumber: existingGame.fullmoveNumber,
+            positionHistory: existingGame.positionHistory,
+            pieceID,
+            targetSquare,
+        });
+
+        if (!result) throw new Error('ILLEGAL MOVE');
+
+        existingGame.pieces = result.pieces as any;
+        existingGame.currentTurn = result.currentTurn;
+        existingGame.moves = result.moves as any;
+        existingGame.lastMove = result.lastMove as any;
+        existingGame.halfmoveClock = result.halfmoveClock;
+        existingGame.fullmoveNumber = result.fullmoveNumber;
+        existingGame.positionHistory = result.positionHistory;
+
+        await existingGame.save();
+
+        if (result.gameStatus === 'playing') {
+            setTimeout(() => {
+                botService.makeBotMove(existingGame._id.toString())
+                    .catch(error => {
+                        console.log('BOT MOVE AFTER USER MOVE ERROR:', error);
+                    });
+            }, 500);
+        }
+
+        return {
+            game: existingGame,
+            gameStatus: result.gameStatus,
+        };
     }
 }
 

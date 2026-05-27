@@ -1,14 +1,11 @@
 import { spawn } from 'child_process';
 import path from 'path';
 
-const enginePath = path.resolve(
+const enginePath = path.resolve( // not good, what is this? how this thing works and its not dynamic
     'src/stockfish-engine/stockfish/stockfish-macos-m1-apple-silicon'
 );
 
-export function getStockfishMove(
-    fen: string,
-    skillLevel: number = 5,
-): Promise<string> {
+export function getStockfishMove(fen: string, skillLevel: number = 5): Promise<string> {
     return new Promise((resolve, reject) => {
         const engine = spawn(enginePath);
 
