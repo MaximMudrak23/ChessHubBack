@@ -3,9 +3,9 @@ import { UserModel } from '../models/User.model'
 import { BotModel } from '../models/Bot.model'
 import { KeyModel } from '../models/Key.model';
 import { MatchTicketModel } from '../models/MatchTicket.model';
-import { botService } from './bot.service';
 import { getPrivateUserDTO } from '../dtos/user.dto';
 import { getPrivateBotDTO } from '../dtos/bot.dto';
+import { botQueueService } from './botQueue.service';
 
 class AdminService {
     // Users Tools
@@ -33,7 +33,7 @@ class AdminService {
             skillLevel,
         });
 
-        botService.scheduleBotSearch(newBot._id.toString());
+        botQueueService.scheduleBotSearch(newBot._id.toString());
         return getPrivateBotDTO(newBot);
     }
 
@@ -83,7 +83,7 @@ class AdminService {
         existingBot.status = 'idle';
         await existingBot.save();
 
-        botService.scheduleBotSearch(existingBot._id.toString());
+        botQueueService.scheduleBotSearch(existingBot._id.toString());
         return getPrivateBotDTO(existingBot);
     }
 
