@@ -44,6 +44,13 @@ type ApplyMoveResult = {
     fullmoveNumber: number;
     positionHistory: string[];
     gameStatus: GameStatus;
+    moveMeta: {
+        isCapture: boolean;
+        isCastling: boolean;
+        isPromotion: boolean;
+        isCheck: boolean;
+        isCheckmate: boolean;
+    };
 };
 
 export function applyMoveToGameState(input: ApplyMoveInput): ApplyMoveResult | null {
@@ -154,5 +161,12 @@ export function applyMoveToGameState(input: ApplyMoveInput): ApplyMoveResult | n
         fullmoveNumber: counters.fullmoveNumber,
         positionHistory: nextPositionHistory,
         gameStatus: nextGameStatus,
+        moveMeta: {
+            isCapture: flags.isRealCapture,
+            isCastling: flags.isCastling,
+            isPromotion: Boolean(promotedPiece),
+            isCheck: givesCheck,
+            isCheckmate: isMate,
+        },
     };
 }

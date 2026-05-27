@@ -1,19 +1,13 @@
-import { BotModel } from '../models/Bot.model';
-import { MatchTicketModel } from '../models/MatchTicket.model';
-
 import { GameModel } from '../models/Game.model';
 import { getStockfishMove } from '../stockfish-engine/stockfish';
 import { piecesToFen } from '../chess/lib/piecesToFen';
 import { applyStockfishMove } from '../chess/lib/applyStockfishMove';
 import { applyMoveToGameState } from '../chess/applyMoveToGameState';
 import { normalizePieces } from '../chess/lib/normalizePieces';
+import { getIO } from '../socket/socket';
+import { gameFinalizerService } from './gameFinalizer.service';
 
 class BotService {
-    private getRandomDelay() {
-        return Math.floor(Math.random() * 10000) + 10000;
-        // return Math.floor(Math.random() * 240000) + 60000;
-    }
-
     async makeBotMove(gameId: string) {
         const game = await GameModel.findById(gameId);
 
@@ -77,43 +71,35 @@ class BotService {
         game.fullmoveNumber = result.fullmoveNumber;
         game.positionHistory = result.positionHistory;
 
-        await game.save();
+        if (result.gameStatus !== 'playing') {
+            const winner =
+                result.gameStatus === 'checkmate'
+                    ? result.currentTurn === 'white'
+                        ? 'black'
+                        : 'white'
+                    : 'draw';
+
+            await gameFinalizerService.finishGame({
+                game,
+                winner,
+                finishedReason: result.gameStatus,
+            });
+        } else {
+            await game.save();
+        }
+
+        getIO().to(game._id.toString()).emit('game:update', {
+            ...game.toObject(),
+            moveMeta: result.moveMeta,
+        });
 
         return {
-            game,
+            game: {
+                ...game.toObject(),
+                moveMeta: result.moveMeta,
+            },
             gameStatus: result.gameStatus,
         };
-    }
-
-    scheduleBotSearch(botId: string) {
-        setTimeout(async () => {
-            try {
-                const existingBot = await BotModel.findById(botId);
-
-                if (!existingBot) return;
-                if (existingBot.status !== 'idle') return;
-
-                existingBot.status = 'searching';
-                await existingBot.save();
-
-                await MatchTicketModel.create({
-                    ownerType: 'bot',
-                    ownerId: existingBot._id,
-                    elo: existingBot.elo,
-                    status: 'searching',
-                });
-            } catch (error) {
-                console.log('SCHEDULE BOT SEARCH ERROR:', error);
-            }
-        }, this.getRandomDelay());
-    }
-
-    async startIdleBotsSearch() {
-        const idleBots = await BotModel.find({ status: 'idle' });
-
-        for (const bot of idleBots) {
-            this.scheduleBotSearch(bot._id.toString());
-        }
     }
 }
 

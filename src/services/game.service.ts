@@ -10,6 +10,9 @@ import { getSelfUserDTO } from "../dtos/user.dto";
 import { applyMoveToGameState } from "../chess/applyMoveToGameState";
 import type { Square } from "../chess/types/chess.types";
 import { normalizePieces } from "../chess/lib/normalizePieces";
+import { getIO } from "../socket/socket";
+import { getGameStatus } from "../chess/lib/applyMove/getGameStatus";
+import { gameFinalizerService } from "./gameFinalizer.service";
 
 class GameService {
     private getEloRange(searchStartedAt: Date): number {
@@ -120,41 +123,21 @@ class GameService {
         const existingGame = await GameModel.findById(gameId);
         if (!existingGame) throw new Error('GAME NOT FOUND');
 
-        if (existingGame.status === 'finished') {
-            const currentUser = await UserModel.findById(userID);
-            return {
-                game: existingGame,
-                user: currentUser ? getSelfUserDTO(currentUser) : null
-            };
+        if (winner !== 'white' && winner !== 'black' && winner !== 'draw' && winner !== null) {
+            throw new Error('INVALID WINNER TYPE');
         }
 
-        if (winner !== 'white' && winner !== 'black' && winner !== 'draw' && winner !== null) throw new Error('INVALID WINNER TYPE');
+        await gameFinalizerService.finishGame({
+            game: existingGame,
+            winner: winner as 'white' | 'black' | 'draw' | null,
+            finishedReason,
+            moves: moves ?? [],
+        });
 
-        existingGame.status = 'finished';
-        existingGame.winner = winner as 'white' | 'black' | 'draw' | null;
-        existingGame.finishedReason = finishedReason;
-        existingGame.moves = moves ?? [];
-        await existingGame.save();
-
-        const players = [existingGame.white, existingGame.black];
-        for (const player of players) {
-            if (player.playerType === 'bot') {
-                await BotModel.findByIdAndUpdate(player.playerId, { status: 'idle' });
-                botService.scheduleBotSearch(player.playerId.toString());
-            }
-        }
-
-        if (winner === 'white' || winner === 'black') {
-            const loser = winner === 'white' ? existingGame.black : existingGame.white;
-            const winnerPlayer = winner === 'white' ? existingGame.white : existingGame.black;
-
-            if (winnerPlayer.playerType === 'user') await UserModel.findByIdAndUpdate(winnerPlayer.playerId, { $inc: { elo: 24 } });
-            if (loser.playerType === 'user') await UserModel.findByIdAndUpdate(loser.playerId, { $inc: { elo: -24 } });
-            if (winnerPlayer.playerType === 'bot') await BotModel.findByIdAndUpdate(winnerPlayer.playerId, { $inc: { elo: 24 } });
-            if (loser.playerType === 'bot') await BotModel.findByIdAndUpdate(loser.playerId, { $inc: { elo: -24 } });
-        }
+        getIO().to(existingGame._id.toString()).emit('game:update', existingGame);
 
         const updatedUser = await UserModel.findById(userID);
+
         return {
             game: existingGame,
             user: updatedUser ? getSelfUserDTO(updatedUser) : null,
@@ -164,6 +147,37 @@ class GameService {
     async getGameById(id: string) {
         const existingGame = await GameModel.findById(id);
         if (!existingGame) throw new Error('GAME NOT FOUND');
+
+        if (existingGame.status === 'active') {
+            const gameStatus = getGameStatus({
+                pieces: normalizePieces(existingGame.pieces),
+                currentTurn: existingGame.currentTurn as any,
+                halfmoveClock: existingGame.halfmoveClock,
+                positionHistory: existingGame.positionHistory,
+            });
+
+            if (gameStatus !== 'playing') {
+                const winner =
+                    gameStatus === 'checkmate'
+                        ? existingGame.currentTurn === 'white'
+                            ? 'black'
+                            : 'white'
+                        : 'draw';
+
+                await gameFinalizerService.finishGame({
+                    game: existingGame,
+                    winner,
+                    finishedReason: gameStatus,
+                });
+
+                getIO().to(existingGame._id.toString()).emit('game:update', existingGame);
+
+                return existingGame;
+            }
+
+            this.tryRunBotTurn(existingGame._id.toString());
+        }
+
         return existingGame;
     }
 
@@ -206,21 +220,59 @@ class GameService {
         existingGame.fullmoveNumber = result.fullmoveNumber;
         existingGame.positionHistory = result.positionHistory;
 
-        await existingGame.save();
+        if (result.gameStatus !== 'playing') {
+            const winner =
+                result.gameStatus === 'checkmate'
+                    ? result.currentTurn === 'white'
+                        ? 'black'
+                        : 'white'
+                    : 'draw';
+
+            await gameFinalizerService.finishGame({
+                game: existingGame,
+                winner,
+                finishedReason: result.gameStatus,
+            });
+        } else {
+            await existingGame.save();
+        }
+
+        getIO().to(existingGame._id.toString()).emit('game:update', {
+            ...existingGame.toObject(),
+            moveMeta: result.moveMeta,
+        });
 
         if (result.gameStatus === 'playing') {
-            setTimeout(() => {
-                botService.makeBotMove(existingGame._id.toString())
-                    .catch(error => {
-                        console.log('BOT MOVE AFTER USER MOVE ERROR:', error);
-                    });
-            }, 500);
+            this.tryRunBotTurn(existingGame._id.toString());
         }
 
         return {
-            game: existingGame,
+            game: {
+                ...existingGame.toObject(),
+                moveMeta: result.moveMeta,
+            },
             gameStatus: result.gameStatus,
         };
+    }
+
+    async tryRunBotTurn(gameId: string) {
+        const existingGame = await GameModel.findById(gameId);
+        if (!existingGame) return null;
+        if (existingGame.status !== 'active') return null;
+
+        const activePlayer = existingGame.currentTurn === 'white'
+            ? existingGame.white
+            : existingGame.black;
+
+        if (activePlayer.playerType !== 'bot') return null;
+
+        setTimeout(() => {
+            botService.makeBotMove(gameId).catch(error => {
+                console.log('TRY RUN BOT TURN ERROR:', error);
+            });
+        }, 500);
+
+        return true;
     }
 }
 

@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'node:path';
+import { createServer } from 'node:http';
 
 import authRoutes from './routes/auth.routes';
 import userRoutes from './routes/user.routes';
@@ -10,11 +11,13 @@ import adminRoutes from './routes/admin.routes';
 import gameRoutes from './routes/game.routes';
 
 import { connectDB } from './config/db';
-import { botService } from './services/bot.service';
+import { botQueueService } from './services/botQueue.service';
+import { initSocket } from './socket/socket';
 
 dotenv.config();
 
 const app = express();
+const server = createServer(app);
 
 app.use(cors());
 app.use(express.json());
@@ -37,12 +40,14 @@ async function start() {
     try {
         await connectDB();
 
+        initSocket(server);
+
         const PORT = process.env.PORT || 3000;
-        app.listen(PORT, async () => {
+        server.listen(PORT, async () => {
             console.log(`SERVER STARTED ON PORT ${PORT}`);
 
             try {
-                await botService.startIdleBotsSearch();
+                await botQueueService.startIdleBotsSearch();
                 console.log('IDLE BOTS SEARCH STARTED');
             } catch (botError) {
                 console.log('FAILED TO START BOTS SEARCH:', botError);
@@ -55,4 +60,4 @@ async function start() {
     }
 }
 
-start()
+start();
