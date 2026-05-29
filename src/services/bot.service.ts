@@ -93,6 +93,14 @@ class BotService {
             moveMeta: result.moveMeta,
         });
 
+        if (result.gameStatus === 'playing') {
+            setTimeout(() => {
+                this.makeBotMove(gameId).catch(error => {
+                    console.log('BOT NEXT MOVE ERROR:', error);
+                });
+            }, 500);
+        }
+
         return {
             game: {
                 ...game.toObject(),

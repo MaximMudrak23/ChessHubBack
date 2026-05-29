@@ -1,5 +1,6 @@
 import { BotModel } from '../models/Bot.model';
 import { MatchTicketModel } from '../models/MatchTicket.model';
+import { gameService } from './game.service';
 
 class BotQueueService {
     private getRandomDelay() {
@@ -24,6 +25,8 @@ class BotQueueService {
                     elo: bot.elo,
                     status: 'searching',
                 });
+
+                await gameService.findGameForBot(bot._id.toString());
             } catch (error) {
                 console.log('SCHEDULE BOT SEARCH ERROR:', error);
             }

@@ -18,11 +18,17 @@ class GameFinalizerService {
         for (const player of players) {
             if (player.playerType !== 'bot') continue;
 
-            await BotModel.findByIdAndUpdate(player.playerId, {
-                status: 'idle',
-            });
+            const bot = await BotModel.findById(player.playerId);
+            if (!bot) continue;
 
-            botQueueService.scheduleBotSearch(player.playerId.toString());
+            if (bot.status === 'disabled') {
+                continue;
+            }
+
+            bot.status = 'idle';
+            await bot.save();
+
+            botQueueService.scheduleBotSearch(bot._id.toString());
         }
     }
 

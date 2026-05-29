@@ -101,6 +101,8 @@ class GameService {
         if (firstPlayer.playerType === 'bot') await BotModel.findByIdAndUpdate(firstPlayer.playerId, { status: 'playing' });
         if (secondPlayer.playerType === 'bot') await BotModel.findByIdAndUpdate(secondPlayer.playerId, { status: 'playing' });
 
+        this.tryRunBotTurn(newGame._id.toString());
+
         return { status: 'matched' as const, game: newGame };
     }
 
@@ -273,6 +275,74 @@ class GameService {
         }, 500);
 
         return true;
+    }
+
+    async findGameForBot(botID: string) {
+        const bot = await BotModel.findById(botID);
+        if (!bot) return null;
+        if (bot.status !== 'searching') return null;
+
+        const ticket = await MatchTicketModel.findOne({
+            ownerType: 'bot',
+            ownerId: bot._id,
+            status: 'searching',
+        });
+
+        if (!ticket) return null;
+
+        const eloRange = this.getEloRange(ticket.searchStartedAt);
+
+        const opponentTicket = await MatchTicketModel.findOne({
+            _id: { $ne: ticket._id },
+            status: 'searching',
+            elo: {
+                $gte: bot.elo - eloRange,
+                $lte: bot.elo + eloRange,
+            },
+        }).sort({ createdAt: 1 });
+
+        if (!opponentTicket) return null;
+
+        const firstPlayer = await getPlayerFromTicket(ticket);
+        const secondPlayer = await getPlayerFromTicket(opponentTicket);
+
+        if (!firstPlayer || !secondPlayer) {
+            await MatchTicketModel.deleteMany({
+                _id: { $in: [ticket._id, opponentTicket._id] },
+            });
+            return null;
+        }
+
+        const { firstSide, secondSide } = getRandomSides();
+
+        const newGame = await GameModel.create({
+            white: firstSide === 'white' ? firstPlayer : secondPlayer,
+            black: secondSide === 'black' ? secondPlayer : firstPlayer,
+            currentTurn: 'white',
+            moves: [],
+            pieces: initialPieces,
+            lastMove: null,
+            halfmoveClock: 0,
+            fullmoveNumber: 1,
+            positionHistory: [],
+            status: 'active',
+        });
+
+        await MatchTicketModel.deleteMany({
+            _id: { $in: [ticket._id, opponentTicket._id] },
+        });
+
+        if (firstPlayer.playerType === 'bot') {
+            await BotModel.findByIdAndUpdate(firstPlayer.playerId, { status: 'playing' });
+        }
+
+        if (secondPlayer.playerType === 'bot') {
+            await BotModel.findByIdAndUpdate(secondPlayer.playerId, { status: 'playing' });
+        }
+
+        this.tryRunBotTurn(newGame._id.toString());
+
+        return newGame;
     }
 }
 
