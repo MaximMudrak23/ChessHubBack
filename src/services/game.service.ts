@@ -10,7 +10,7 @@ import { getSelfUserDTO } from "../dtos/user.dto";
 import { applyMoveToGameState } from "../chess/applyMoveToGameState";
 import type { Square } from "../chess/types/chess.types";
 import { normalizePieces } from "../chess/lib/normalizePieces";
-import { getIO } from "../socket/socket";
+import { getIO, getPlayerRoom } from "../socket/socket";
 import { getGameStatus } from "../chess/lib/applyMove/getGameStatus";
 import { gameFinalizerService } from "./gameFinalizer.service";
 
@@ -98,6 +98,14 @@ class GameService {
         await MatchTicketModel.deleteMany({
             _id: { $in: [ticket._id, opponentTicket._id] },
         });
+
+        getIO()
+            .to(getPlayerRoom(String(newGame.white.playerId)))
+            .emit('player:active-game:update', newGame._id.toString());
+
+        getIO()
+            .to(getPlayerRoom(String(newGame.black.playerId)))
+            .emit('player:active-game:update', newGame._id.toString());
 
         if (firstPlayer.playerType === 'bot') await BotModel.findByIdAndUpdate(firstPlayer.playerId, { status: 'playing' });
         if (secondPlayer.playerType === 'bot') await BotModel.findByIdAndUpdate(secondPlayer.playerId, { status: 'playing' });
@@ -333,6 +341,14 @@ class GameService {
         await MatchTicketModel.deleteMany({
             _id: { $in: [ticket._id, opponentTicket._id] },
         });
+
+        getIO()
+            .to(getPlayerRoom(String(newGame.white.playerId)))
+            .emit('player:active-game:update', newGame._id.toString());
+
+        getIO()
+            .to(getPlayerRoom(String(newGame.black.playerId)))
+            .emit('player:active-game:update', newGame._id.toString());
 
         if (firstPlayer.playerType === 'bot') {
             await BotModel.findByIdAndUpdate(firstPlayer.playerId, { status: 'playing' });

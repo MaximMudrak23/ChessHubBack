@@ -3,6 +3,10 @@ import type { Server as HttpServer } from 'node:http';
 
 let io: Server | null = null;
 
+export function getPlayerRoom(playerId: string) {
+    return `player:${playerId}`;
+}
+
 export function initSocket(server: HttpServer) {
     io = new Server(server, {
         cors: {
@@ -23,6 +27,16 @@ export function initSocket(server: HttpServer) {
         socket.on('game:leave', (gameId: string) => {
             socket.leave(gameId);
             console.log(`SOCKET ${socket.id} LEFT GAME ${gameId}`);
+        });
+
+        socket.on('player:watch', (playerId: string) => {
+            socket.join(getPlayerRoom(playerId));
+            console.log(`SOCKET ${socket.id} WATCHING PLAYER ${playerId}`);
+        });
+
+        socket.on('player:unwatch', (playerId: string) => {
+            socket.leave(getPlayerRoom(playerId));
+            console.log(`SOCKET ${socket.id} STOPPED WATCHING PLAYER ${playerId}`);
         });
 
         socket.on('disconnect', () => {

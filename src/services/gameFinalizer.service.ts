@@ -1,6 +1,7 @@
 import { UserModel } from '../models/User.model';
 import { BotModel } from '../models/Bot.model';
 import { botQueueService } from './botQueue.service';
+import { getIO, getPlayerRoom } from '../socket/socket';
 
 type Winner = 'white' | 'black' | 'draw' | null;
 
@@ -12,6 +13,16 @@ type FinishGameInput = {
 };
 
 class GameFinalizerService {
+    private emitActiveGameCleared(game: any) {
+        getIO()
+            .to(getPlayerRoom(String(game.white.playerId)))
+            .emit('player:active-game:update', null);
+
+        getIO()
+            .to(getPlayerRoom(String(game.black.playerId)))
+            .emit('player:active-game:update', null);
+    }
+
     private async releaseBots(game: any) {
         const players = [game.white, game.black];
 
@@ -79,6 +90,8 @@ class GameFinalizerService {
         }
 
         await game.save();
+
+        this.emitActiveGameCleared(game);
 
         await this.releaseBots(game);
         await this.updateElo(game, winner);
