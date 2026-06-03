@@ -3,6 +3,7 @@ import type {
     Square,
     LastMove,
 } from '../types/chess.types';
+import { getPieceSide } from './getPiece';
 
 import { canMovePawn } from './moveRules/canMovePawn';
 import { canMoveRook } from './moveRules/canMoveRook';
@@ -21,6 +22,12 @@ export function canMovePiece(
     lastMove?: LastMove,
 ) {
     if (piece.square === targetSquare) {
+        return false;
+    }
+
+    const targetPiece = pieces.find(p => p.square === targetSquare);
+
+    if (targetPiece && getPieceSide(targetPiece) === getPieceSide(piece)) {
         return false;
     }
 
