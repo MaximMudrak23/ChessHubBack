@@ -138,6 +138,26 @@ class GameService {
             throw new Error('INVALID WINNER TYPE');
         }
 
+        const isWhitePlayer =
+            existingGame.white.playerType === 'user' &&
+            String(existingGame.white.playerId) === String(userID);
+
+        const isBlackPlayer =
+            existingGame.black.playerType === 'user' &&
+            String(existingGame.black.playerId) === String(userID);
+
+        if (finishedReason === 'resignation') {
+            if (!isWhitePlayer && !isBlackPlayer) {
+                throw new Error('NOT GAME PLAYER');
+            }
+
+            const expectedWinner = isWhitePlayer ? 'black' : 'white';
+
+            if (winner !== expectedWinner) {
+                throw new Error('INVALID RESIGN WINNER');
+            }
+        }
+
         await gameFinalizerService.finishGame({
             game: existingGame,
             winner: winner as 'white' | 'black' | 'draw' | null,
