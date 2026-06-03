@@ -1,5 +1,6 @@
 import { UserModel } from '../models/User.model';
 import { BotModel } from '../models/Bot.model';
+import { GameModel } from '../models/Game.model';
 import { getPublicUserDTO } from '../dtos/user.dto';
 import { getPublicBotDTO } from '../dtos/bot.dto';
 
@@ -42,6 +43,18 @@ class PlayerService {
         if (!existingBot) throw new Error('PLAYER NOT FOUND');
 
         return getPublicBotDTO(existingBot);
+    }
+
+    async getActiveGameByPlayerId(id: string) {
+        const activeGame = await GameModel.findOne({
+            status: 'active',
+            $or: [
+                { 'white.playerId': id },
+                { 'black.playerId': id },
+            ],
+        });
+
+        return activeGame;
     }
 }
 

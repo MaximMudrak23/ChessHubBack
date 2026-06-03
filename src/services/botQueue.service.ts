@@ -19,12 +19,20 @@ class BotQueueService {
                 bot.status = 'searching';
                 await bot.save();
 
-                await MatchTicketModel.create({
+                const existingTicket = await MatchTicketModel.findOne({
                     ownerType: 'bot',
                     ownerId: bot._id,
-                    elo: bot.elo,
                     status: 'searching',
                 });
+
+                if (!existingTicket) {
+                    await MatchTicketModel.create({
+                        ownerType: 'bot',
+                        ownerId: bot._id,
+                        elo: bot.elo,
+                        status: 'searching',
+                    });
+                }
 
                 await gameService.findGameForBot(bot._id.toString());
             } catch (error) {

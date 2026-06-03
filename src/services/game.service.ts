@@ -58,6 +58,7 @@ class GameService {
 
         const opponentTicket = await MatchTicketModel.findOne({
             _id: { $ne: ticket._id },
+            ownerId: { $ne: existingUser._id },
             status: 'searching',
             elo: {
                 $gte: existingUser.elo - eloRange,
@@ -294,6 +295,7 @@ class GameService {
 
         const opponentTicket = await MatchTicketModel.findOne({
             _id: { $ne: ticket._id },
+            ownerId: { $ne: bot._id },
             status: 'searching',
             elo: {
                 $gte: bot.elo - eloRange,

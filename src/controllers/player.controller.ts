@@ -34,3 +34,18 @@ export async function getPlayerById(req: AuthRequest, res: Response) {
         return res.status(500).json({ message: 'Server error' });
     }
 }
+
+export async function getPlayerActiveGame(req: AuthRequest, res: Response) {
+    try {
+        const id = String(req.params.id);
+
+        const activeGame = await playerService.getActiveGameByPlayerId(id);
+
+        return res.status(200).json({
+            game: activeGame ?? null,
+        });
+    } catch (error) {
+        console.log('GET PLAYER ACTIVE GAME ERROR:', error);
+        return res.status(500).json({ message: 'Server error' });
+    }
+}
