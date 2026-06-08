@@ -6,6 +6,9 @@ let io: Server | null = null;
 export function getPlayerRoom(playerId: string) {
     return `player:${playerId}`;
 }
+export function getMatchmakingRoom(userId: string) {
+    return `matchmaking:${userId}`;
+}
 
 export function initSocket(server: HttpServer) {
     io = new Server(server, {
@@ -37,6 +40,16 @@ export function initSocket(server: HttpServer) {
         socket.on('player:unwatch', (playerId: string) => {
             socket.leave(getPlayerRoom(playerId));
             console.log(`SOCKET ${socket.id} STOPPED WATCHING PLAYER ${playerId}`);
+        });
+
+        socket.on('matchmaking:join', (userId: string) => {
+            socket.join(getMatchmakingRoom(userId));
+            console.log(`SOCKET ${socket.id} JOINED MATCHMAKING ${userId}`);
+        });
+
+        socket.on('matchmaking:leave', (userId: string) => {
+            socket.leave(getMatchmakingRoom(userId));
+            console.log(`SOCKET ${socket.id} LEFT MATCHMAKING ${userId}`);
         });
 
         socket.on('disconnect', () => {

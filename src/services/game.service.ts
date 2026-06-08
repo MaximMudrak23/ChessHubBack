@@ -10,7 +10,7 @@ import { getSelfUserDTO } from "../dtos/user.dto";
 import { applyMoveToGameState } from "../chess/applyMoveToGameState";
 import type { Square } from "../chess/types/chess.types";
 import { normalizePieces } from "../chess/lib/normalizePieces";
-import { getIO, getPlayerRoom } from "../socket/socket";
+import { getIO, getPlayerRoom, getMatchmakingRoom } from "../socket/socket";
 import { getGameStatus } from "../chess/lib/applyMove/getGameStatus";
 import { gameFinalizerService } from "./gameFinalizer.service";
 
@@ -106,6 +106,18 @@ class GameService {
         getIO()
             .to(getPlayerRoom(String(newGame.black.playerId)))
             .emit('player:active-game:update', newGame._id.toString());
+
+        if (newGame.white.playerType === 'user') {
+            getIO()
+                .to(getMatchmakingRoom(String(newGame.white.playerId)))
+                .emit('match:found', newGame._id.toString());
+        }
+
+        if (newGame.black.playerType === 'user') {
+            getIO()
+                .to(getMatchmakingRoom(String(newGame.black.playerId)))
+                .emit('match:found', newGame._id.toString());
+        }
 
         if (firstPlayer.playerType === 'bot') await BotModel.findByIdAndUpdate(firstPlayer.playerId, { status: 'playing' });
         if (secondPlayer.playerType === 'bot') await BotModel.findByIdAndUpdate(secondPlayer.playerId, { status: 'playing' });
@@ -369,6 +381,18 @@ class GameService {
         getIO()
             .to(getPlayerRoom(String(newGame.black.playerId)))
             .emit('player:active-game:update', newGame._id.toString());
+
+        if (newGame.white.playerType === 'user') {
+            getIO()
+                .to(getMatchmakingRoom(String(newGame.white.playerId)))
+                .emit('match:found', newGame._id.toString());
+        }
+
+        if (newGame.black.playerType === 'user') {
+            getIO()
+                .to(getMatchmakingRoom(String(newGame.black.playerId)))
+                .emit('match:found', newGame._id.toString());
+        }
 
         if (firstPlayer.playerType === 'bot') {
             await BotModel.findByIdAndUpdate(firstPlayer.playerId, { status: 'playing' });
