@@ -406,6 +406,27 @@ class GameService {
 
         return newGame;
     }
+
+    async getSearchStatus(userID: string) {
+        const ticket = await MatchTicketModel.findOne({
+            ownerType: 'user',
+            ownerId: userID,
+            status: 'searching',
+        });
+
+        if (!ticket) {
+            return {
+                searching: false,
+                eloRange: null,
+            };
+        }
+
+        return {
+            searching: true,
+            eloRange: this.getEloRange(ticket.searchStartedAt),
+            searchStartedAt: ticket.searchStartedAt,
+        };
+    }
 }
 
 export const gameService = new GameService();

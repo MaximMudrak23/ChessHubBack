@@ -116,3 +116,17 @@ export async function makeMove(req: AuthRequest, res: Response) {
         return res.status(500).json({ message: 'Server error' });
     }
 }
+
+export async function getSearchStatus(req: AuthRequest, res: Response) {
+    try {
+        const userID = req.userId;
+        if (!userID) return res.status(401).json({ message: 'Unauthorized' });
+
+        const result = await gameService.getSearchStatus(userID);
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.log('GET SEARCH STATUS ERROR:', error);
+        return res.status(500).json({ message: 'Server error' });
+    }
+}
