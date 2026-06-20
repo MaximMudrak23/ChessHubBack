@@ -67,6 +67,14 @@ class GameService {
         }).sort({ createdAt: 1 });
 
         if (!opponentTicket) {
+            getIO()
+                .to(getPlayerRoom(String(existingUser._id)))
+                .emit('matchmaking:status:update', {
+                    searching: true,
+                    eloRange,
+                    searchStartedAt: ticket.searchStartedAt,
+                });
+
             return { status: 'searching' as const, eloRange };
         }
 
@@ -133,6 +141,15 @@ class GameService {
             ownerId: userID,
             status: 'searching',
         });
+
+        getIO()
+            .to(getPlayerRoom(String(userID)))
+            .emit('matchmaking:status:update', {
+                searching: false,
+                eloRange: null,
+                searchStartedAt: null,
+            });
+
         return true;
     }
 
