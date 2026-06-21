@@ -6,6 +6,7 @@ import { MatchTicketModel } from '../models/MatchTicket.model';
 import { getPrivateUserDTO } from '../dtos/user.dto';
 import { getPrivateBotDTO } from '../dtos/bot.dto';
 import { botQueueService } from './botQueue.service';
+import { GameModel } from '../models/Game.model';
 
 class AdminService {
     // Users Tools
@@ -41,7 +42,15 @@ class AdminService {
         const existingBot = await BotModel.findById(botID);
         
         if (!existingBot) throw new Error('BOT NOT FOUND');
-        if (existingBot.status === 'playing') throw new Error('BOT IS PLAYING');
+        const activeGame = await GameModel.findOne({
+            status: 'active',
+            $or: [
+                { 'white.playerType': 'bot', 'white.playerId': existingBot._id },
+                { 'black.playerType': 'bot', 'black.playerId': existingBot._id },
+            ],
+        });
+
+        if (activeGame) throw new Error('BOT HAS ACTIVE GAME');
 
         await MatchTicketModel.deleteMany({
             ownerType: 'bot',
