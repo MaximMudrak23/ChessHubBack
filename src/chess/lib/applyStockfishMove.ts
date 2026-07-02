@@ -13,7 +13,7 @@ type Props = {
     pieces: PieceType[];
 };
 
-export function applyStockfishMove({ move, pieces }: Props) {
+export function applyEngineMove({ move, pieces }: Props) {
     const from = move.slice(0, 2) as Square;
     const to = move.slice(2, 4) as Square;
 

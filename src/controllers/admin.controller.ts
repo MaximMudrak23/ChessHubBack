@@ -89,20 +89,41 @@ export async function getAdminBots(_: AuthRequest, res: Response) {
 
 export async function createAdminBot(req: AuthRequest, res: Response) {
     try {
-        const { name, botType, skillLevel } = req.body;
+        const { name, engine, skillLevel } = req.body;
 
-        if (typeof name !== 'string') return res.status(400).json({ message: 'Bot name must be a string' });
-        
+        if (typeof name !== 'string') {
+            return res.status(400).json({ message: 'Bot name must be a string' });
+        }
+
         const trimmedName = name.trim();
-        if (!trimmedName) return res.status(400).json({ message: 'Bot name is required' });
 
-        // ONLY STOCKFISH ENABLE FOR NOW
-        if (botType !== 'stockfish') return res.status(400).json({ message: 'Only stockfish bot is available now' });
+        if (!trimmedName) {
+            return res.status(400).json({ message: 'Bot name is required' });
+        }
+
+        const allowedEngines = ['stockfish', 'komodo', 'dragon'];
+
+        if (!allowedEngines.includes(engine)) {
+            return res.status(400).json({ message: 'Invalid engine' });
+        }
 
         const skill = Number(skillLevel);
-        if (Number.isNaN(skill) || skill < 0 || skill > 20) return res.status(400).json({ message: 'Skill level must be between 0 and 20' });
 
-        const newBot = await adminService.createBot(trimmedName, skill);
+        if (!Number.isInteger(skill)) {
+            return res.status(400).json({ message: 'Skill level must be an integer' });
+        }
+
+        const isStockfish = engine === 'stockfish';
+        const minSkill = isStockfish ? 0 : 1;
+        const maxSkill = isStockfish ? 20 : 25;
+
+        if (skill < minSkill || skill > maxSkill) {
+            return res.status(400).json({
+                message: `Skill level must be between ${minSkill} and ${maxSkill}`,
+            });
+        }
+
+        const newBot = await adminService.createBot(trimmedName, engine, skill);
 
         return res.status(201).json({
             message: 'Bot created',

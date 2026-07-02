@@ -55,6 +55,10 @@ class AuthService {
         const existingUser = await UserModel.findOne({ email });
         if (existingUser) throw new Error('USER EXISTS');
 
+        if (!emailService.isEnabled()) {
+            return await this.register(email, password, key);
+        }
+
         const hashedPassword = await bcrypt.hash(password, 10);
         const verifyToken = crypto.randomBytes(32).toString('hex');
 
@@ -77,7 +81,7 @@ class AuthService {
         }
 
         const verifyLink = `${serverURL}/auth/register/verify/${verifyToken}`;
-        
+
         emailService
             .sendVerificationEmail(email, verifyLink)
             .then(() => {

@@ -1,11 +1,11 @@
 import { GameModel } from '../models/Game.model';
-import { getStockfishMove } from '../stockfish-engine/stockfish';
 import { piecesToFen } from '../chess/lib/piecesToFen';
-import { applyStockfishMove } from '../chess/lib/applyStockfishMove';
+import { applyEngineMove } from '../chess/lib/applyStockfishMove';
 import { applyMoveToGameState } from '../chess/applyMoveToGameState';
 import { normalizePieces } from '../chess/lib/normalizePieces';
 import { getIO } from '../socket/socket';
 import { gameFinalizerService } from './gameFinalizer.service';
+import { createEngine } from '../engines/EngineFactory';
 
 class BotService {
     async makeBotMove(gameId: string) {
@@ -37,13 +37,14 @@ class BotService {
             game.lastMove as any,
         );
 
-        const stockfishMove = await getStockfishMove(
-            fen,
-            activePlayer.skillLevel ?? 5,
-        );
+        const engine = createEngine(activePlayer.engine ?? 'stockfish');
+        
+        const engineMove = await engine.getBestMove(fen, {
+            skillLevel: activePlayer.skillLevel ?? 5,
+        });
 
-        const parsedMove = applyStockfishMove({
-            move: stockfishMove,
+        const parsedMove = applyEngineMove({
+            move: engineMove,
             pieces,
         });
 

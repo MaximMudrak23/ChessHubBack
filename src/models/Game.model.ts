@@ -1,3 +1,4 @@
+import { isValidSkillLevel } from '../engines/engineConfig';
 import mongoose from 'mongoose';
 
 const gamePlayerSchema = new mongoose.Schema({
@@ -13,9 +14,13 @@ const gamePlayerSchema = new mongoose.Schema({
     },
 
     name: String,
+
     elo: Number,
+
     avatarURL: String,
+
     avatarFrameURL: String,
+
     userIcons: {
         type: [
             {
@@ -26,9 +31,22 @@ const gamePlayerSchema = new mongoose.Schema({
         default: [],
     },
 
+    engine: {
+        type: String,
+        enum: ['stockfish', 'komodo', 'dragon', null],
+        default: null,
+    },
+
     skillLevel: {
         type: Number,
         default: null,
+        validate: {
+            validator: function (this: any, value: number | null) {
+                if (value === null || this.engine === null) return true;
+                return isValidSkillLevel(this.engine, value);
+            },
+            message: (props: any) => `skillLevel ${props.value} недопустим для этого движка`,
+        },
     },
 }, { _id: false });
 

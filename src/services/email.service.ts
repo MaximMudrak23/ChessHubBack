@@ -25,6 +25,10 @@ class EmailService {
             html: verificationEmailTemplate(verifyLink),
         });
     }
+
+    isEnabled() {
+        return Boolean(process.env.EMAIL_USER && process.env.EMAIL_PASS);
+    }
 }
 
 export const emailService = new EmailService();

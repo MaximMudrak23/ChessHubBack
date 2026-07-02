@@ -103,7 +103,15 @@ export async function startRegister(req: Request, res: Response) {
             });
         }
 
-        await authService.startRegister(email, password, key);
+        const result = await authService.startRegister(email, password, key);
+
+        if (result !== true) {
+            return res.status(201).json({
+                message: 'User created',
+                token: result.token,
+                user: result.user,
+            });
+        }
 
         return res.status(200).json({
             message: 'Verification email sent',

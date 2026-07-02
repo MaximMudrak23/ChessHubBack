@@ -70,7 +70,7 @@ const userSchema = new mongoose.Schema({
     description: {
         type: String,
         default: '',
-        maxlength: 300,
+        maxlength: 1000,
     },
 
     name: {

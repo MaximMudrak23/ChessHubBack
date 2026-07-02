@@ -1,3 +1,4 @@
+import { isValidSkillLevel } from '../engines/engineConfig'; 
 import mongoose from 'mongoose';
 
 const userIconSchema = new mongoose.Schema({
@@ -44,8 +45,8 @@ const botSchema = new mongoose.Schema({
 
     botType: {
         type: String,
-        enum: ['stockfish', 'mirror', 'personality'],
-        default: 'stockfish',
+        enum: ['classic'],
+        default: 'classic',
     },
 
     linkedUserId: {
@@ -65,7 +66,7 @@ const botSchema = new mongoose.Schema({
     description: {
         type: String,
         default: '',
-        maxlength: 300,
+        maxlength: 1000,
     },
 
     avatarURL: {
@@ -106,15 +107,19 @@ const botSchema = new mongoose.Schema({
 
     engine: {
         type: String,
-        enum: ['stockfish'],
+        enum: ['stockfish', 'komodo', 'dragon'],
         default: 'stockfish',
     },
 
     skillLevel: {
         type: Number,
-        min: 0,
-        max: 20,
         default: 5,
+        validate: {
+            validator: function (this: any, value: number) {
+                return isValidSkillLevel(this.engine, value);
+            },
+            message: (props: any) => `skillLevel ${props.value} недопустим для этого движка`,
+        },
     },
 
     pgnFiles: {

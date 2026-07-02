@@ -18,5 +18,6 @@ export async function getPlayerFromTicket(ticket: any) {
         avatarFrameURL: entity.avatarFrameURL,
         userIcons: getPlayerIconsDTO(entity),
         skillLevel: ticket.ownerType === 'bot' && 'skillLevel' in entity ? entity.skillLevel : null,
+        engine: ticket.ownerType === 'bot' && 'engine' in entity ? entity.engine : null,
     };
 }

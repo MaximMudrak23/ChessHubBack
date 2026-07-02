@@ -8,6 +8,8 @@ import { getPrivateBotDTO } from '../dtos/bot.dto';
 import { botQueueService } from './botQueue.service';
 import { GameModel } from '../models/Game.model';
 
+type EngineType = 'stockfish' | 'komodo' | 'dragon';
+
 class AdminService {
     // Users Tools
     async getAllUsers() {
@@ -27,10 +29,11 @@ class AdminService {
         return existingBots.map(bot => getPrivateBotDTO(bot));
     }
 
-    async createBot(name: string, skillLevel: number) {
+    async createBot(name: string, engine: EngineType, skillLevel: number) {
         const newBot = await BotModel.create({
             name: name.trim(),
-            botType: 'stockfish',
+            botType: 'classic',
+            engine,
             skillLevel,
         });
 
