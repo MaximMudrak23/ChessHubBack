@@ -1,23 +1,30 @@
-import fs from "node:fs"
-import path from "node:path"
 import { UserModel } from "../models/User.model";
 import { getSelfUserDTO } from "../dtos/user.dto";
+import cloudinary from "../config/cloudinary";
 
 class UserService {
-    async getUserService(userID: string) { // only for /me
+    async getUserService(userID: string) {
         const existingUser = await UserModel.findById(userID);
         if (!existingUser) throw new Error('USER NOT FOUND');
         return getSelfUserDTO(existingUser);
     }
 
-    private deleteUploadedFile(fileURL: string) {
-        const cleanURL = fileURL.split('?')[0];
-        if (!cleanURL.startsWith('/uploads')) return;
-        
-        const filePath = path.join(process.cwd(), cleanURL);
+    private uploadAvatarToCloudinary(userID: string, buffer: Buffer): Promise<string> {
+        return new Promise((resolve, reject) => {
+            const uploadStream = cloudinary.uploader.upload_stream(
+                {
+                    folder: 'chesshub/avatars',
+                    public_id: userID,
+                    overwrite: true,
+                    resource_type: 'image',
+                },
+                (error, result) => {
+                    if (error || !result) return reject(error);
+                    resolve(result.secure_url);
+                }
+            );
 
-        fs.unlink(filePath, error => {
-            if (error && error.code !== 'ENOENT') console.log('DELETE FILE ERROR:', error);
+            uploadStream.end(buffer);
         });
     }
 
@@ -32,13 +39,13 @@ class UserService {
         return getSelfUserDTO(existingUser);
     }
 
-    async updateAvatar(userID: string, filename?: string, avatarFrameURL?: string) {
+    async updateAvatar(userID: string, fileBuffer?: Buffer, avatarFrameURL?: string) {
         const existingUser = await UserModel.findById(userID);
         if (!existingUser) throw new Error('USER NOT FOUND');
 
-        if (filename) {
-            this.deleteUploadedFile(existingUser.avatarURL);
-            existingUser.avatarURL = `/uploads/avatars/${filename}?v=${Date.now()}`;
+        if (fileBuffer) {
+            const avatarURL = await this.uploadAvatarToCloudinary(userID, fileBuffer);
+            existingUser.avatarURL = avatarURL;
         }
 
         if (avatarFrameURL) existingUser.avatarFrameURL = avatarFrameURL;
@@ -47,17 +54,17 @@ class UserService {
         return getSelfUserDTO(existingUser);
     }
 
-    async updateBackground(userID: string, profileBackground: any) { // temporarily any
+    async updateBackground(userID: string, profileBackground: any) {
         const existingUser = await UserModel.findById(userID);
         if (!existingUser) throw new Error('USER NOT FOUND');
 
         existingUser.profileBackground = profileBackground ?? null;
-        
+
         await existingUser.save();
         return getSelfUserDTO(existingUser);
     }
 
-    async updateSong(userID: string, profileSong: any) { // temporarily any
+    async updateSong(userID: string, profileSong: any) {
         const existingUser = await UserModel.findById(userID);
         if (!existingUser) throw new Error('USER NOT FOUND');
 

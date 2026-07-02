@@ -44,12 +44,11 @@ export async function updateAvatar(req: AuthRequest, res: Response) {
 
         if (!existingUserID) return res.status(401).json({ message: 'Unauthorized' });
 
-        if(!req.file && avatarFrameURL === undefined) return res.status(400).json({ message: 'Avatar data is missing' });
+        if (!req.file && avatarFrameURL === undefined) return res.status(400).json({ message: 'Avatar data is missing' });
 
         if (avatarFrameURL !== undefined && typeof avatarFrameURL !== 'string') return res.status(400).json({ message: 'Avatar frame must be a string' });
 
-        const filename = req.file?.filename;
-        const updatedUser = await userService.updateAvatar(existingUserID, filename, avatarFrameURL);
+        const updatedUser = await userService.updateAvatar(existingUserID, req.file?.buffer, avatarFrameURL);
 
         return res.status(200).json({
             message: 'Avatar updated',

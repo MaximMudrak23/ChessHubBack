@@ -1,11 +1,12 @@
 import path from 'path';
 import { UciEngineBase } from './UciEngineBase';
+import { ENGINE_CONFIG } from './engineConfig';
 
 export class StockfishEngine extends UciEngineBase {
     protected binaryPath = process.env.STOCKFISH_PATH
-        || path.resolve(process.cwd(), 'src/engines/bin/stockfish-18');
+        || path.resolve(__dirname, 'bin/stockfish-18');
 
-    protected skillOptionName = 'Skill Level';
-    protected minSkillLevel = 0;
-    protected maxSkillLevel = 20;
+    protected skillOptionName = ENGINE_CONFIG.stockfish.skillOptionName;
+    protected minSkillLevel = ENGINE_CONFIG.stockfish.minSkillLevel;
+    protected maxSkillLevel = ENGINE_CONFIG.stockfish.maxSkillLevel;
 }
