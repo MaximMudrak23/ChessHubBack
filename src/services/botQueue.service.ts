@@ -3,12 +3,18 @@ import { MatchTicketModel } from '../models/MatchTicket.model';
 import { gameService } from './game.service';
 
 class BotQueueService {
+    private scheduledBots = new Set<string>();
+
     private getRandomDelay() {
         return Math.floor(Math.random() * 10000) + 10000;
         // return Math.floor(Math.random() * 240000) + 60000;
     }
 
     scheduleBotSearch(botId: string) {
+        if (this.scheduledBots.has(botId)) return;
+
+        this.scheduledBots.add(botId);
+
         setTimeout(async () => {
             try {
                 const bot = await BotModel.findById(botId);
@@ -37,6 +43,8 @@ class BotQueueService {
                 await gameService.findGameForBot(bot._id.toString());
             } catch (error) {
                 console.log('SCHEDULE BOT SEARCH ERROR:', error);
+            } finally {
+                this.scheduledBots.delete(botId);
             }
         }, this.getRandomDelay());
     }
