@@ -163,10 +163,6 @@ class GameService {
         const existingGame = await GameModel.findById(gameId);
         if (!existingGame) throw new Error('GAME NOT FOUND');
 
-        if (winner !== 'white' && winner !== 'black' && winner !== 'draw' && winner !== null) {
-            throw new Error('INVALID WINNER TYPE');
-        }
-
         const isWhitePlayer =
             existingGame.white.playerType === 'user' &&
             String(existingGame.white.playerId) === String(userID);
@@ -175,26 +171,38 @@ class GameService {
             existingGame.black.playerType === 'user' &&
             String(existingGame.black.playerId) === String(userID);
 
+        let finalWinner: 'white' | 'black' | 'draw' | null;
+
         if (finishedReason === 'resignation') {
             if (!isWhitePlayer && !isBlackPlayer) {
                 throw new Error('NOT GAME PLAYER');
             }
 
-            const expectedWinner = isWhitePlayer ? 'black' : 'white';
-
-            if (winner !== expectedWinner) {
-                throw new Error('INVALID RESIGN WINNER');
+            // Запрос отправил сдавшийся игрок
+            finalWinner = isWhitePlayer ? 'black' : 'white';
+        } else {
+            if (
+                winner !== 'white' &&
+                winner !== 'black' &&
+                winner !== 'draw' &&
+                winner !== null
+            ) {
+                throw new Error('INVALID WINNER TYPE');
             }
+
+            finalWinner = winner as 'white' | 'black' | 'draw' | null;
         }
 
         await gameFinalizerService.finishGame({
             game: existingGame,
-            winner: winner as 'white' | 'black' | 'draw' | null,
+            winner: finalWinner,
             finishedReason,
             moves: moves ?? [],
         });
 
-        getIO().to(existingGame._id.toString()).emit('game:update', existingGame);
+        getIO()
+            .to(existingGame._id.toString())
+            .emit('game:update', existingGame);
 
         const updatedUser = await UserModel.findById(userID);
 
