@@ -72,6 +72,7 @@ class BotService {
                 positionHistory: freshGame.positionHistory,
                 pieceID: parsedMove.pieceID,
                 targetSquare: parsedMove.targetSquare,
+                promotion: parsedMove.promotion,
             });
 
             if (!result) return null;

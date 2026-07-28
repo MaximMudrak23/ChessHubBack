@@ -1,4 +1,8 @@
-import type { PieceType, Square } from '../types/chess.types';
+import type {
+    PieceType,
+    PromotionPiece,
+    Square,
+} from '../types/chess.types';
 
 // Converts Stockfish move notation (e.g. "e2e4")
 // into internal move data used by the chess engine.
@@ -23,8 +27,15 @@ export function applyEngineMove({ move, pieces }: Props) {
         return null;
     }
 
+    const promotionChar = move[4];
+
+    const promotion = ['q', 'r', 'b', 'n'].includes(promotionChar)
+        ? promotionChar as PromotionPiece
+        : undefined;
+
     return {
         pieceID: piece.id,
         targetSquare: to,
+        promotion,
     };
 }

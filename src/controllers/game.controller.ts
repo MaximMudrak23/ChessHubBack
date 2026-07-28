@@ -91,13 +91,22 @@ export async function getActiveGame(req: AuthRequest, res: Response) {
 
 export async function makeMove(req: AuthRequest, res: Response) {
     try {
-        const { gameId, pieceID, targetSquare } = req.body;
+        const { gameId, pieceID, targetSquare, promotion } = req.body;
 
         if (!gameId || !pieceID || !targetSquare) {
             return res.status(400).json({ message: 'Move data is missing' });
         }
 
-        const result = await gameService.makeMove(gameId, pieceID, targetSquare);
+        if (
+            promotion !== undefined &&
+            !['q', 'r', 'b', 'n'].includes(promotion)
+        ) {
+            return res.status(400).json({
+                message: 'Invalid promotion piece',
+            });
+        }
+
+        const result = await gameService.makeMove(gameId, pieceID, targetSquare, promotion,);
 
         return res.status(200).json(result);
     } catch (error: any) {

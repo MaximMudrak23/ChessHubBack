@@ -1,6 +1,7 @@
 import type {
     PieceCode,
     PieceType,
+    PromotionPiece,
     Square,
 } from '../../types/chess.types';
 
@@ -12,20 +13,23 @@ import { getPieceSide } from '../getPiece';
 export function getPromotedPiece(
     piece: PieceType,
     targetSquare: Square,
+    promotion?: PromotionPiece,
 ): PieceCode | null {
-    if (piece.piece[1] !== 'p') {
+    if (piece.piece[1] !== 'p' || !promotion) {
         return null;
     }
 
     const side = getPieceSide(piece);
 
-    if (side === 'white' && targetSquare[1] === '8') {
-        return 'wq';
+    const isPromotionSquare =
+        (side === 'white' && targetSquare[1] === '8') ||
+        (side === 'black' && targetSquare[1] === '1');
+
+    if (!isPromotionSquare) {
+        return null;
     }
 
-    if (side === 'black' && targetSquare[1] === '1') {
-        return 'bq';
-    }
+    const color = side === 'white' ? 'w' : 'b';
 
-    return null;
+    return `${color}${promotion}` as PieceCode;
 }

@@ -8,7 +8,7 @@ import { getRandomSides } from "../utils/getRandomSides";
 import { getPlayerFromTicket } from "../utils/getPlayerFromTicket";
 import { getSelfUserDTO } from "../dtos/user.dto";
 import { applyMoveToGameState } from "../chess/applyMoveToGameState";
-import type { Square } from "../chess/types/chess.types";
+import type { Square, PromotionPiece } from "../chess/types/chess.types";
 import { normalizePieces } from "../chess/lib/normalizePieces";
 import { getIO, getPlayerRoom, getMatchmakingRoom } from "../socket/socket";
 import { getGameStatus } from "../chess/lib/applyMove/getGameStatus";
@@ -259,7 +259,12 @@ class GameService {
         });
     }
 
-    async makeMove(gameId: string, pieceID: string, targetSquare: Square) {
+    async makeMove(
+        gameId: string,
+        pieceID: string,
+        targetSquare: Square,
+        promotion?: PromotionPiece
+    ) {
         const existingGame = await GameModel.findById(gameId);
         if (!existingGame) throw new Error('GAME NOT FOUND');
         if (existingGame.status !== 'active') throw new Error('GAME NOT ACTIVE');
@@ -276,6 +281,7 @@ class GameService {
             positionHistory: existingGame.positionHistory,
             pieceID,
             targetSquare,
+            promotion,
         });
 
         if (!result) throw new Error('ILLEGAL MOVE');

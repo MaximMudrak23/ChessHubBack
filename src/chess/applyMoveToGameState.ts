@@ -1,4 +1,4 @@
-import type {PieceType, Square, LastMove, Side, GameStatus} from './types/chess.types';
+import type {PieceType, Square, LastMove, Side, GameStatus, PromotionPiece} from './types/chess.types';
 import { canMovePiece } from './lib/canMovePiece';
 import { isMoveSafe } from './lib/isMoveSafe';
 import { getPieceById, getPieceSide } from './lib/getPiece';
@@ -33,6 +33,7 @@ type ApplyMoveInput = {
     positionHistory: string[];
     pieceID: string;
     targetSquare: Square;
+    promotion?: PromotionPiece;
 };
 
 type ApplyMoveResult = {
@@ -64,6 +65,7 @@ export function applyMoveToGameState(input: ApplyMoveInput): ApplyMoveResult | n
         positionHistory,
         pieceID,
         targetSquare,
+        promotion,
     } = input;
 
     const selectedPiece = getPieceById(pieces, pieceID);
@@ -84,6 +86,23 @@ export function applyMoveToGameState(input: ApplyMoveInput): ApplyMoveResult | n
         return null;
     }
 
+    const selectedSide = getPieceSide(selectedPiece);
+
+    const isPromotionMove =
+        selectedPiece.piece[1] === 'p' &&
+        (
+            (selectedSide === 'white' && targetSquare[1] === '8') ||
+            (selectedSide === 'black' && targetSquare[1] === '1')
+        );
+
+    if (isPromotionMove && !promotion) {
+        return null;
+    }
+
+    if (!isPromotionMove && promotion) {
+        return null;
+    }
+
     const nextTurn = currentTurn === 'white' ? 'black' : 'white';
 
     const flags = getMoveFlags({
@@ -92,7 +111,11 @@ export function applyMoveToGameState(input: ApplyMoveInput): ApplyMoveResult | n
         targetSquare,
     });
 
-    const promotedPiece = getPromotedPiece(selectedPiece, targetSquare);
+    const promotedPiece = getPromotedPiece(
+        selectedPiece,
+        targetSquare,
+        promotion,
+    );
 
     const nextPieces = getNextPieces({
         pieces,
