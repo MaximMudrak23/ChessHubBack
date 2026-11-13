@@ -4,7 +4,7 @@ import { ChessEngine, EngineOptions } from './ChessEngine.interface';
 export abstract class UciEngineBase implements ChessEngine {
     protected abstract binaryPath: string;
 
-    protected skillOptionName = 'Skill Level';
+    protected skillOptionName: string | null = 'Skill Level';
     protected minSkillLevel = 0;
     protected maxSkillLevel = 20;
 
@@ -47,7 +47,9 @@ export abstract class UciEngineBase implements ChessEngine {
 
                 if (!isReadySent && output.includes('uciok')) {
                     isReadySent = true;
-                    engine.stdin.write(`setoption name ${this.skillOptionName} value ${safeSkillLevel}\n`);
+                    if (this.skillOptionName !== null) {
+                        engine.stdin.write(`setoption name ${this.skillOptionName} value ${safeSkillLevel}\n`);
+                    }
                     engine.stdin.write('isready\n');
                     return;
                 }

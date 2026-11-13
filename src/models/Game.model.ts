@@ -33,7 +33,7 @@ const gamePlayerSchema = new mongoose.Schema({
 
     engine: {
         type: String,
-        enum: ['stockfish', 'komodo', 'dragon', null],
+        enum: ['stockfish', 'komodo', 'dragon', 'reckless', null],
         default: null,
     },
 

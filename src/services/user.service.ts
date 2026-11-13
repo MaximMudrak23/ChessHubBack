@@ -1,31 +1,12 @@
 import { UserModel } from "../models/User.model";
 import { getSelfUserDTO } from "../dtos/user.dto";
-import cloudinary from "../config/cloudinary";
+import { uploadAvatarToCloudinary } from '../utils/uploadAvatar';
 
 class UserService {
     async getUserService(userID: string) {
         const existingUser = await UserModel.findById(userID);
         if (!existingUser) throw new Error('USER NOT FOUND');
         return getSelfUserDTO(existingUser);
-    }
-
-    private uploadAvatarToCloudinary(userID: string, buffer: Buffer): Promise<string> {
-        return new Promise((resolve, reject) => {
-            const uploadStream = cloudinary.uploader.upload_stream(
-                {
-                    folder: 'chesshub/avatars',
-                    public_id: userID,
-                    overwrite: true,
-                    resource_type: 'image',
-                },
-                (error, result) => {
-                    if (error || !result) return reject(error);
-                    resolve(result.secure_url);
-                }
-            );
-
-            uploadStream.end(buffer);
-        });
     }
 
     async updateProfile(userID: string, name: string, description?: string) {
@@ -44,7 +25,7 @@ class UserService {
         if (!existingUser) throw new Error('USER NOT FOUND');
 
         if (fileBuffer) {
-            const avatarURL = await this.uploadAvatarToCloudinary(userID, fileBuffer);
+            const avatarURL = await uploadAvatarToCloudinary(userID, fileBuffer);
             existingUser.avatarURL = avatarURL;
         }
 

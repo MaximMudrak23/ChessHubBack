@@ -7,8 +7,9 @@ import { getPrivateUserDTO } from '../dtos/user.dto';
 import { getPrivateBotDTO } from '../dtos/bot.dto';
 import { botQueueService } from './botQueue.service';
 import { GameModel } from '../models/Game.model';
+import { uploadAvatarToCloudinary } from '../utils/uploadAvatar';
 
-type EngineType = 'stockfish' | 'komodo' | 'dragon';
+type EngineType = 'stockfish' | 'komodo' | 'dragon' | 'reckless';
 
 class AdminService {
     // Users Tools
@@ -29,16 +30,47 @@ class AdminService {
         return existingBots.map(bot => getPrivateBotDTO(bot));
     }
 
-    async createBot(name: string, engine: EngineType, skillLevel: number) {
-        const newBot = await BotModel.create({
+    async createBot(name: string, engine: EngineType, skillLevel: number, fileBuffer?: Buffer) {
+        const newBot = new BotModel({
             name: name.trim(),
             botType: 'classic',
             engine,
             skillLevel,
         });
 
+        await newBot.validate();
+
+        if (fileBuffer) {
+            newBot.avatarURL = await uploadAvatarToCloudinary(
+                `bots/${newBot._id}`,
+                fileBuffer,
+                ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+            );
+        }
+
+        await newBot.save();
         botQueueService.scheduleBotSearch(newBot._id.toString());
         return getPrivateBotDTO(newBot);
+    }
+
+    async updateBot(botID: string, name?: string, fileBuffer?: Buffer) {
+        const existingBot = await BotModel.findById(botID);
+        if (!existingBot) throw new Error('BOT NOT FOUND');
+
+        if (name !== undefined) existingBot.name = name.trim();
+
+        await existingBot.validate();
+
+        if (fileBuffer) {
+            existingBot.avatarURL = await uploadAvatarToCloudinary(
+                `bots/${existingBot._id}`,
+                fileBuffer,
+                ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+            );
+        }
+
+        await existingBot.save();
+        return getPrivateBotDTO(existingBot);
     }
 
     async deleteBot(botID: string) {

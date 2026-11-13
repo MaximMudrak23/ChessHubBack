@@ -1,6 +1,7 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { adminService } from '../services/admin.service';
+import { isObjectIdOrHexString } from 'mongoose';
 
 // USERS
 export async function getAdminUsers(req: AuthRequest, res: Response) {
@@ -89,7 +90,7 @@ export async function getAdminBots(_: AuthRequest, res: Response) {
 
 export async function createAdminBot(req: AuthRequest, res: Response) {
     try {
-        const { name, engine, skillLevel } = req.body;
+        const { name, engine, skillLevel } = req.body ?? {};
 
         if (typeof name !== 'string') {
             return res.status(400).json({ message: 'Bot name must be a string' });
@@ -101,7 +102,11 @@ export async function createAdminBot(req: AuthRequest, res: Response) {
             return res.status(400).json({ message: 'Bot name is required' });
         }
 
-        const allowedEngines = ['stockfish', 'komodo', 'dragon'];
+        if (trimmedName.length > 24) {
+            return res.status(400).json({ message: 'Bot name must be between 1 and 24 characters' });
+        }
+
+        const allowedEngines = ['stockfish', 'komodo', 'dragon', 'reckless'];
 
         if (!allowedEngines.includes(engine)) {
             return res.status(400).json({ message: 'Invalid engine' });
@@ -115,7 +120,7 @@ export async function createAdminBot(req: AuthRequest, res: Response) {
 
         const isStockfish = engine === 'stockfish';
         const minSkill = isStockfish ? 0 : 1;
-        const maxSkill = isStockfish ? 20 : 25;
+        const maxSkill = engine === 'reckless' ? 1 : isStockfish ? 20 : 25;
 
         if (skill < minSkill || skill > maxSkill) {
             return res.status(400).json({
@@ -123,14 +128,60 @@ export async function createAdminBot(req: AuthRequest, res: Response) {
             });
         }
 
-        const newBot = await adminService.createBot(trimmedName, engine, skill);
+        const newBot = await adminService.createBot(trimmedName, engine, skill, req.file?.buffer);
 
         return res.status(201).json({
             message: 'Bot created',
             bot: newBot,
         });
-    } catch (error) {
+    } catch (error: any) {
         console.log('CREATE ADMIN BOT ERROR:', error);
+        if (error.http_code === 400) {
+            return res.status(400).json({ message: 'Invalid avatar image' });
+        }
+        return res.status(500).json({ message: 'Server error' });
+    }
+}
+
+export async function updateAdminBot(req: AuthRequest, res: Response) {
+    try {
+        const id = String(req.params.id);
+        const { name } = req.body ?? {};
+
+        if (!isObjectIdOrHexString(id)) {
+            return res.status(400).json({ message: 'Invalid bot ID' });
+        }
+
+        if (name === undefined && !req.file) {
+            return res.status(400).json({ message: 'Bot name or avatar is required' });
+        }
+
+        if (name !== undefined) {
+            if (typeof name !== 'string') {
+                return res.status(400).json({ message: 'Bot name must be a string' });
+            }
+
+            if (!name.trim() || name.trim().length > 24) {
+                return res.status(400).json({ message: 'Bot name must be between 1 and 24 characters' });
+            }
+        }
+
+        const updatedBot = await adminService.updateBot(id, name?.trim(), req.file?.buffer);
+
+        return res.status(200).json({
+            message: 'Bot updated',
+            bot: updatedBot,
+        });
+    } catch (error: any) {
+        console.log('UPDATE ADMIN BOT ERROR:', error);
+
+        if (error.message === 'BOT NOT FOUND') {
+            return res.status(404).json({ message: 'Bot not found' });
+        }
+        if (error.http_code === 400) {
+            return res.status(400).json({ message: 'Invalid avatar image' });
+        }
+
         return res.status(500).json({ message: 'Server error' });
     }
 }

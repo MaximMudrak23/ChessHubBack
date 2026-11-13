@@ -20,9 +20,11 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 
 COPY src/engines/bin ./dist/engines/bin
-RUN chmod +x ./dist/engines/bin/stockfish-18 \
+RUN chmod +x \
+    ./dist/engines/bin/stockfish-18 \
     ./dist/engines/bin/komodo-14.1 \
-    ./dist/engines/bin/dragon-1
+    ./dist/engines/bin/dragon-1 \
+    ./dist/engines/bin/reckless-linux-generic
 
 COPY uploads ./uploads
 

@@ -107,7 +107,7 @@ const botSchema = new mongoose.Schema({
 
     engine: {
         type: String,
-        enum: ['stockfish', 'komodo', 'dragon'],
+        enum: ['stockfish', 'komodo', 'dragon', 'reckless'],
         default: 'stockfish',
     },
 
