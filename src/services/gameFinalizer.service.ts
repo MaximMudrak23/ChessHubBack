@@ -9,7 +9,6 @@ type FinishGameInput = {
     game: any;
     winner: Winner;
     finishedReason: string;
-    moves?: any[];
 };
 
 class GameFinalizerService {
@@ -75,7 +74,7 @@ class GameFinalizerService {
     }
 
     async finishGame(input: FinishGameInput) {
-        const { game, winner, finishedReason, moves } = input;
+        const { game, winner, finishedReason } = input;
 
         if (game.status === 'finished') {
             return game;
@@ -84,10 +83,6 @@ class GameFinalizerService {
         game.status = 'finished';
         game.winner = winner;
         game.finishedReason = finishedReason;
-
-        if (moves) {
-            game.moves = moves;
-        }
 
         await game.save();
 

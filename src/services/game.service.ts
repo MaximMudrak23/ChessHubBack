@@ -8,13 +8,26 @@ import { getRandomSides } from "../utils/getRandomSides";
 import { getPlayerFromTicket } from "../utils/getPlayerFromTicket";
 import { getSelfUserDTO } from "../dtos/user.dto";
 import { applyMoveToGameState } from "../chess/applyMoveToGameState";
-import type { Square, PromotionPiece } from "../chess/types/chess.types";
+import type { Square, PromotionPiece, Side } from "../chess/types/chess.types";
 import { normalizePieces } from "../chess/lib/normalizePieces";
 import { getIO, getPlayerRoom, getMatchmakingRoom } from "../socket/socket";
 import { getGameStatus } from "../chess/lib/applyMove/getGameStatus";
 import { gameFinalizerService } from "./gameFinalizer.service";
 
 class GameService {
+    private getUserSide(game: InstanceType<typeof GameModel>, userID: string): Side {
+        if (!userID || typeof userID !== 'string') throw new Error('UNAUTHORIZED');
+
+        for (const side of ['white', 'black'] as const) {
+            const player = game[side];
+            if (player.playerType === 'user' && String(player.playerId) === userID) {
+                return side;
+            }
+        }
+
+        throw new Error('NOT GAME PLAYER');
+    }
+
     private getEloRange(searchStartedAt: Date): number {
         const seconds = (Date.now() - searchStartedAt.getTime()) / 1000;
         if (seconds < 30) return 200;
@@ -156,48 +169,42 @@ class GameService {
     async finishGame(
         userID: string,
         gameId: string,
-        winner: string,
-        finishedReason: string,
-        moves: any[]
+        finishedReason: string
     ) {
         const existingGame = await GameModel.findById(gameId);
         if (!existingGame) throw new Error('GAME NOT FOUND');
 
-        const isWhitePlayer =
-            existingGame.white.playerType === 'user' &&
-            String(existingGame.white.playerId) === String(userID);
+        const userSide = this.getUserSide(existingGame, userID);
+        if (existingGame.status === 'finished') {
+            const user = await UserModel.findById(userID);
+            return { game: existingGame, user: user ? getSelfUserDTO(user) : null };
+        }
 
-        const isBlackPlayer =
-            existingGame.black.playerType === 'user' &&
-            String(existingGame.black.playerId) === String(userID);
-
-        let finalWinner: 'white' | 'black' | 'draw' | null;
+        let finalWinner: 'white' | 'black' | 'draw';
 
         if (finishedReason === 'resignation') {
-            if (!isWhitePlayer && !isBlackPlayer) {
-                throw new Error('NOT GAME PLAYER');
-            }
-
-            // Запрос отправил сдавшийся игрок
-            finalWinner = isWhitePlayer ? 'black' : 'white';
+            finalWinner = userSide === 'white' ? 'black' : 'white';
         } else {
-            if (
-                winner !== 'white' &&
-                winner !== 'black' &&
-                winner !== 'draw' &&
-                winner !== null
-            ) {
-                throw new Error('INVALID WINNER TYPE');
+            const gameStatus = getGameStatus({
+                pieces: normalizePieces(existingGame.pieces),
+                currentTurn: existingGame.currentTurn as Side,
+                halfmoveClock: existingGame.halfmoveClock,
+                positionHistory: existingGame.positionHistory,
+            });
+
+            if (gameStatus === 'playing' || finishedReason !== gameStatus) {
+                throw new Error('INVALID GAME RESULT');
             }
 
-            finalWinner = winner as 'white' | 'black' | 'draw' | null;
+            finalWinner = gameStatus === 'checkmate'
+                ? existingGame.currentTurn === 'white' ? 'black' : 'white'
+                : 'draw';
         }
 
         await gameFinalizerService.finishGame({
             game: existingGame,
             winner: finalWinner,
             finishedReason,
-            moves: moves ?? [],
         });
 
         getIO()
@@ -216,50 +223,39 @@ class GameService {
         const existingGame = await GameModel.findById(id);
         if (!existingGame) throw new Error('GAME NOT FOUND');
 
-        if (existingGame.status === 'active') {
-            const gameStatus = getGameStatus({
-                pieces: normalizePieces(existingGame.pieces),
-                currentTurn: existingGame.currentTurn as any,
-                halfmoveClock: existingGame.halfmoveClock,
-                positionHistory: existingGame.positionHistory,
-            });
-
-            if (gameStatus !== 'playing') {
-                const winner =
-                    gameStatus === 'checkmate'
-                        ? existingGame.currentTurn === 'white'
-                            ? 'black'
-                            : 'white'
-                        : 'draw';
-
-                await gameFinalizerService.finishGame({
-                    game: existingGame,
-                    winner,
-                    finishedReason: gameStatus,
-                });
-
-                getIO().to(existingGame._id.toString()).emit('game:update', existingGame);
-
-                return existingGame;
-            }
-
-            this.tryRunBotTurn(existingGame._id.toString());
-        }
-
         return existingGame;
     }
 
     async getActiveGame(userID: string) {
-        return await GameModel.findOne({
+        const activeGame = await GameModel.findOne({
             status: 'active',
             $or: [
-                { 'white.playerId': userID },
-                { 'black.playerId': userID },
+                { 'white.playerType': 'user', 'white.playerId': userID },
+                { 'black.playerType': 'user', 'black.playerId': userID },
             ],
         });
+
+        if (activeGame) {
+            const gameStatus = getGameStatus({
+                pieces: normalizePieces(activeGame.pieces),
+                currentTurn: activeGame.currentTurn as Side,
+                halfmoveClock: activeGame.halfmoveClock,
+                positionHistory: activeGame.positionHistory,
+            });
+
+            if (gameStatus !== 'playing') {
+                await this.finishGame(userID, activeGame._id.toString(), gameStatus);
+                return null;
+            }
+
+            await this.tryRunBotTurn(activeGame._id.toString());
+        }
+
+        return activeGame;
     }
 
     async makeMove(
+        userID: string,
         gameId: string,
         pieceID: string,
         targetSquare: Square,
@@ -267,7 +263,9 @@ class GameService {
     ) {
         const existingGame = await GameModel.findById(gameId);
         if (!existingGame) throw new Error('GAME NOT FOUND');
+        const userSide = this.getUserSide(existingGame, userID);
         if (existingGame.status !== 'active') throw new Error('GAME NOT ACTIVE');
+        if (existingGame.currentTurn !== userSide) throw new Error('NOT YOUR TURN');
 
         const pieces = normalizePieces(existingGame.pieces);
 

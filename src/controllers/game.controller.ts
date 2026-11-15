@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { gameService } from '../services/game.service';
+import { isObjectIdOrHexString } from 'mongoose';
+import type { Square } from '../chess/types/chess.types';
 
 export async function findGame(req: AuthRequest, res: Response) {
     try {
@@ -36,11 +38,15 @@ export async function finishGame(req: AuthRequest, res: Response) {
         const userID = req.userId;
         if (!userID) return res.status(401).json({ message: 'Unauthorized' });
 
-        const { gameId, winner, finishedReason, moves } = req.body;
+        const { gameId, finishedReason } = req.body ?? {};
 
         if (!gameId) return res.status(400).json({ message: 'Game ID is required' });
+        if (!isObjectIdOrHexString(gameId)) return res.status(400).json({ message: 'Invalid game ID' });
+        if (typeof finishedReason !== 'string' || !finishedReason) {
+            return res.status(400).json({ message: 'Finish reason is required' });
+        }
 
-        const result = await gameService.finishGame(userID, gameId, winner, finishedReason, moves);
+        const result = await gameService.finishGame(userID, gameId, finishedReason);
 
         return res.status(200).json({
             message: 'Game finished',
@@ -53,8 +59,17 @@ export async function finishGame(req: AuthRequest, res: Response) {
         if (error.message === 'GAME NOT FOUND') {
             return res.status(404).json({ message: 'Game not found' });
         }
-        if (error.message === 'INVALID WINNER TYPE') {
-            return res.status(400).json({ message: 'Invalid winner type' });
+        if (error.message === 'UNAUTHORIZED') {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+        if (error.message === 'NOT GAME PLAYER') {
+            return res.status(403).json({ message: 'Not a game participant' });
+        }
+        if (error.message === 'INVALID GAME RESULT') {
+            return res.status(400).json({ message: 'Finish reason does not match the game state' });
+        }
+        if (error.name === 'VersionError') {
+            return res.status(409).json({ message: 'Game state changed, reload the game' });
         }
         
         return res.status(500).json({ message: 'Server error' });
@@ -91,10 +106,17 @@ export async function getActiveGame(req: AuthRequest, res: Response) {
 
 export async function makeMove(req: AuthRequest, res: Response) {
     try {
-        const { gameId, pieceID, targetSquare, promotion } = req.body;
+        const userID = req.userId;
+        if (!userID) return res.status(401).json({ message: 'Unauthorized' });
+
+        const { gameId, pieceID, targetSquare, promotion } = req.body ?? {};
 
         if (!gameId || !pieceID || !targetSquare) {
             return res.status(400).json({ message: 'Move data is missing' });
+        }
+        if (!isObjectIdOrHexString(gameId)) return res.status(400).json({ message: 'Invalid game ID' });
+        if (typeof pieceID !== 'string' || typeof targetSquare !== 'string' || !/^[a-h][1-8]$/.test(targetSquare)) {
+            return res.status(400).json({ message: 'Invalid move data' });
         }
 
         if (
@@ -106,7 +128,7 @@ export async function makeMove(req: AuthRequest, res: Response) {
             });
         }
 
-        const result = await gameService.makeMove(gameId, pieceID, targetSquare, promotion,);
+        const result = await gameService.makeMove(userID, gameId, pieceID, targetSquare as Square, promotion);
 
         return res.status(200).json(result);
     } catch (error: any) {
@@ -115,11 +137,23 @@ export async function makeMove(req: AuthRequest, res: Response) {
         if (error.message === 'GAME NOT FOUND') {
             return res.status(404).json({ message: 'Game not found' });
         }
+        if (error.message === 'UNAUTHORIZED') {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+        if (error.message === 'NOT GAME PLAYER') {
+            return res.status(403).json({ message: 'Not a game participant' });
+        }
+        if (error.message === 'NOT YOUR TURN') {
+            return res.status(403).json({ message: 'Not your turn' });
+        }
         if (error.message === 'GAME NOT ACTIVE') {
             return res.status(400).json({ message: 'Game is not active' });
         }
         if (error.message === 'ILLEGAL MOVE') {
             return res.status(400).json({ message: 'Illegal move' });
+        }
+        if (error.name === 'VersionError') {
+            return res.status(409).json({ message: 'Game state changed, reload the game' });
         }
 
         return res.status(500).json({ message: 'Server error' });

@@ -131,6 +131,7 @@ const gameSchema = new mongoose.Schema({
     },
 }, {
     timestamps: true,
+    optimisticConcurrency: true,
 });
 
 export const GameModel = mongoose.model('Game', gameSchema);
