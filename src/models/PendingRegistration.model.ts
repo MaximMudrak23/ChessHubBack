@@ -30,11 +30,6 @@ const pendingRegistrationSchema = new mongoose.Schema({
         default: false,
     },
 
-    authToken: {
-        type: String,
-        default: null,
-    },
-
     expiresAt: {
         type: Date,
         required: true,

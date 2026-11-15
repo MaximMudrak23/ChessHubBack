@@ -3,11 +3,15 @@ import { AuthRequest } from '../middleware/auth.middleware';
 import { authService } from '../services/auth.service';
 import { userService } from '../services/user.service';
 
+function isNonEmptyString(value: unknown): value is string {
+    return typeof value === 'string' && value.trim().length > 0;
+}
+
 export async function register(req: Request, res: Response) {
     try {
-        const { email, password, key } = req.body;
+        const { email, password, key } = req.body ?? {};
 
-        if (!email || !password || !key) {
+        if (!isNonEmptyString(email) || typeof password !== 'string' || !password || !isNonEmptyString(key)) {
             return res.status(400).json({
                 message: 'Email, password or key is missing',
             });
@@ -36,9 +40,9 @@ export async function register(req: Request, res: Response) {
 
 export async function login(req: Request, res: Response) {
     try {
-        const { email, password } = req.body;
+        const { email, password } = req.body ?? {};
 
-        if (!email || !password) {
+        if (!isNonEmptyString(email) || typeof password !== 'string' || !password) {
             return res.status(400).json({
                 message: 'Email or password is missing',
             });
@@ -95,9 +99,9 @@ export async function me(req: AuthRequest, res: Response) {
 
 export async function startRegister(req: Request, res: Response) {
     try {
-        const { email, password, key } = req.body;
+        const { email, password, key } = req.body ?? {};
 
-        if (!email || !password || !key) {
+        if (!isNonEmptyString(email) || typeof password !== 'string' || !password || !isNonEmptyString(key)) {
             return res.status(400).json({
                 message: 'Email, password or key is missing',
             });
@@ -133,9 +137,9 @@ export async function startRegister(req: Request, res: Response) {
 
 export async function verifyRegister(req: Request, res: Response) {
     try {
-        const token = String(req.params.token);
+        const token = req.params.token;
 
-        if (!token) {
+        if (!isNonEmptyString(token)) {
             return res.status(400).json({ message: 'Verification token is missing' });
         }
 
@@ -167,9 +171,9 @@ export async function verifyRegister(req: Request, res: Response) {
 
 export async function getRegisterStatus(req: Request, res: Response) {
     try {
-        const email = String(req.query.email);
+        const email = req.query.email;
 
-        if (!email || email === 'undefined') {
+        if (!isNonEmptyString(email)) {
             return res.status(400).json({ message: 'Email is missing' });
         }
 
@@ -184,9 +188,9 @@ export async function getRegisterStatus(req: Request, res: Response) {
 
 export async function resendRegisterEmail(req: Request, res: Response) {
     try {
-        const { email } = req.body;
+        const { email } = req.body ?? {};
 
-        if (!email) {
+        if (!isNonEmptyString(email)) {
             return res.status(400).json({ message: 'Email is missing' });
         }
 

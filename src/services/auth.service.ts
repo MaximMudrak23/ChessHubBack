@@ -99,7 +99,9 @@ class AuthService {
 
     async verifyRegister(verifyToken: string) {
         const pending = await PendingRegistrationModel.findOne({ verifyToken });
-        if (!pending) throw new Error('INVALID VERIFY TOKEN');
+        if (!pending || pending.verified || pending.expiresAt.getTime() <= Date.now()) {
+            throw new Error('INVALID VERIFY TOKEN');
+        }
 
         const existingUser = await UserModel.findOne({ email: pending.email });
         if (existingUser) throw new Error('USER EXISTS');
@@ -120,7 +122,6 @@ class AuthService {
         const token = createToken(newUser._id.toString());
 
         pending.verified = true;
-        pending.authToken = token;
         pending.expiresAt = new Date(Date.now() + 1000 * 60 * 5);
         await pending.save();
 
@@ -133,34 +134,19 @@ class AuthService {
     async getRegisterStatus(email: string) {
         const pending = await PendingRegistrationModel.findOne({ email });
 
-        if (!pending) {
+        if (!pending || pending.expiresAt.getTime() <= Date.now()) {
             return { verified: false };
         }
 
-        if (!pending.verified || !pending.authToken) {
-            return { verified: false };
-        }
-
-        const user = await UserModel.findOne({ email });
-        if (!user) {
-            return { verified: false };
-        }
-
-        const result = {
-            verified: true,
-            token: pending.authToken,
-            user: getSelfUserDTO(user),
-        };
-
-        await PendingRegistrationModel.deleteOne({ _id: pending._id });
-
-        return result;
+        return { verified: pending.verified === true };
     }
 
     async resendRegisterEmail(email: string) {
         const pending = await PendingRegistrationModel.findOne({ email });
 
-        if (!pending) throw new Error('PENDING NOT FOUND');
+        if (!pending || pending.expiresAt.getTime() <= Date.now()) {
+            throw new Error('PENDING NOT FOUND');
+        }
 
         if (pending.verified) {
             return true;
