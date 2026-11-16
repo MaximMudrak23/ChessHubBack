@@ -10,7 +10,7 @@ import { getSelfUserDTO } from "../dtos/user.dto";
 import { applyMoveToGameState } from "../chess/applyMoveToGameState";
 import type { Square, PromotionPiece, Side } from "../chess/types/chess.types";
 import { normalizePieces } from "../chess/lib/normalizePieces";
-import { getIO, getPlayerRoom, getMatchmakingRoom } from "../socket/socket";
+import { getIO, getPlayerRoom, getMatchmakingRoom, getUserRoom } from "../socket/socket";
 import { getGameStatus } from "../chess/lib/applyMove/getGameStatus";
 import { gameFinalizerService } from "./gameFinalizer.service";
 
@@ -81,7 +81,7 @@ class GameService {
 
         if (!opponentTicket) {
             getIO()
-                .to(getPlayerRoom(String(existingUser._id)))
+                .to(getUserRoom(String(existingUser._id)))
                 .emit('matchmaking:status:update', {
                     searching: true,
                     eloRange,
@@ -156,7 +156,7 @@ class GameService {
         });
 
         getIO()
-            .to(getPlayerRoom(String(userID)))
+            .to(getUserRoom(String(userID)))
             .emit('matchmaking:status:update', {
                 searching: false,
                 eloRange: null,
