@@ -1,6 +1,33 @@
 import { Response } from 'express';
 import { AuthRequest } from '../middleware/auth.middleware';
 import { userService } from '../services/user.service';
+import { isAppearanceId } from '../utils/appearance';
+
+export async function updateAppearance(req: AuthRequest, res: Response) {
+    try {
+        const existingUserID = req.userId;
+        if (!existingUserID) return res.status(401).json({ message: 'Unauthorized' });
+
+        const { boardTheme, pieceSet, menuBackground } = req.body ?? {};
+        if (!isAppearanceId(boardTheme) || !isAppearanceId(pieceSet) || !isAppearanceId(menuBackground)) {
+            return res.status(400).json({ message: 'Appearance IDs must contain 1–64 letters, digits, hyphens or underscores and start with a letter or digit' });
+        }
+
+        const updatedUser = await userService.updateAppearance(existingUserID, {
+            boardTheme, pieceSet, menuBackground,
+        });
+
+        return res.status(200).json({ message: 'Appearance updated', user: updatedUser });
+    } catch (error: any) {
+        console.log('UPDATE APPEARANCE ERROR:', error);
+
+        if (error.message === 'USER NOT FOUND') {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        return res.status(500).json({ message: 'Server error' });
+    }
+}
 
 export async function updateProfile(req: AuthRequest, res: Response) {
     try {

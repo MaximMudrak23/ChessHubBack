@@ -1,3 +1,5 @@
+import { normalizeMenuBackground } from '../utils/appearance';
+
 export function getPublicUserDTO(user: any) {
     return {
         id: user._id,
@@ -27,8 +29,9 @@ export function getPrivateUserDTO(user: any) {
         avatarFrameURL: user.avatarFrameURL,
         profileBackground: user.profileBackground,
         profileSong: user.profileSong,
-        boardTheme: user.boardTheme,
-        menuBackground: user.menuBackground,
+        boardTheme: user.boardTheme ?? 'water',
+        pieceSet: user.pieceSet ?? 'default',
+        menuBackground: normalizeMenuBackground(user.menuBackground),
     };
 }
 
@@ -49,7 +52,8 @@ export function getSelfUserDTO(user: any) {
         unlockedProfileSongs: user.unlockedProfileSongs,
         profileBackground: user.profileBackground,
         profileSong: user.profileSong,
-        boardTheme: user.boardTheme,
-        menuBackground: user.menuBackground,
+        boardTheme: user.boardTheme ?? 'water',
+        pieceSet: user.pieceSet ?? 'default',
+        menuBackground: normalizeMenuBackground(user.menuBackground),
     };
 }

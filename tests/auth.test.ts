@@ -69,6 +69,9 @@ function assertAuthenticated(result: Awaited<ReturnType<typeof request>>) {
     assert.equal(decoded.userId, user._id);
     assert.equal(result.body.user.id, user._id);
     assert.equal(result.body.user.email, user.email);
+    assert.equal(result.body.user.boardTheme, 'water');
+    assert.equal(result.body.user.pieceSet, 'default');
+    assert.equal(result.body.user.menuBackground, 'default');
     assert.equal('password' in result.body.user, false);
 }
 

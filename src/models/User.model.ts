@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import { isAppearanceId, normalizeMenuBackground } from '../utils/appearance';
 
 const userIconSchema = new mongoose.Schema({
     title: String,
@@ -118,16 +119,31 @@ const userSchema = new mongoose.Schema({
 
     boardTheme: {
         type: String,
-        enum: ['water'],
+        required: true,
+        validate: isAppearanceId,
         default: 'water',
+    },
+
+    pieceSet: {
+        type: String,
+        required: true,
+        validate: isAppearanceId,
+        default: 'default',
     },
 
     menuBackground: {
         type: String,
-        default: 'default.jpg',
+        required: true,
+        validate: isAppearanceId,
+        set: normalizeMenuBackground,
+        default: 'default',
     },
 }, {
     timestamps: true,
+});
+
+userSchema.pre('validate', function () {
+    this.menuBackground = normalizeMenuBackground(this.menuBackground);
 });
 
 export const UserModel = mongoose.model('User', userSchema);

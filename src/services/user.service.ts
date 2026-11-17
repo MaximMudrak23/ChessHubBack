@@ -1,8 +1,26 @@
 import { UserModel } from "../models/User.model";
 import { getSelfUserDTO } from "../dtos/user.dto";
 import { uploadAvatarToCloudinary } from '../utils/uploadAvatar';
+import type { Appearance } from '../utils/appearance';
 
 class UserService {
+    async updateAppearance(userID: string, appearance: Appearance) {
+        const existingUser = await UserModel.findById(userID);
+        if (!existingUser) throw new Error('USER NOT FOUND');
+
+        existingUser.boardTheme = appearance.boardTheme;
+        existingUser.pieceSet = appearance.pieceSet;
+        existingUser.menuBackground = appearance.menuBackground;
+
+        // Replace the entire appearance even when some IDs have not changed.
+        for (const field of ['boardTheme', 'pieceSet', 'menuBackground']) {
+            existingUser.markModified(field);
+        }
+
+        await existingUser.save();
+        return getSelfUserDTO(existingUser);
+    }
+
     async getUserService(userID: string) {
         const existingUser = await UserModel.findById(userID);
         if (!existingUser) throw new Error('USER NOT FOUND');
