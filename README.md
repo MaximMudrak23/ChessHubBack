@@ -88,3 +88,30 @@ After code changes, rebuild the image and start a new container. Actual deployme
 ## Checks
 
 `docker build` validates that the image builds; **it does not test gameplay**. `npm test` is currently a placeholder. Check authentication, matchmaking, bot moves and game completion manually against the development database.
+
+## Host on you Wi-Fi
+
+```bash
+docker run --rm --platform linux/amd64 \
+  --name chesshub-backend --network chesshub-dev \
+  --env-file .env -p <YOUR_LOCAL_IP>:3000:3000 \
+  -v "$PWD/src:/app/src:ro" \
+  chesshub-backend-dev ./node_modules/.bin/ts-node-dev --respawn --transpile-only --poll src/index.ts
+```
+
+### How to find `<YOUR_LOCAL_IP>` address
+
+To find your local IP address, run in the terminal:
+
+**Windows (powershell):**
+
+Find **IPv4 Address** under your active Wi-Fi adapter.
+
+```bash
+ipconfig
+```
+
+**macOS (terminal):**
+```bash
+ipconfig getifaddr en0
+```
