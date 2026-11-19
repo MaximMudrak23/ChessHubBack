@@ -83,6 +83,7 @@ class GameFinalizerService {
         game.status = 'finished';
         game.winner = winner;
         game.finishedReason = finishedReason;
+        game.finishedAt = new Date();
 
         await game.save();
 

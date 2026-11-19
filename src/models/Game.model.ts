@@ -129,9 +129,17 @@ const gameSchema = new mongoose.Schema({
         type: String,
         default: '',
     },
+
+    finishedAt: {
+        type: Date,
+        default: null,
+    },
 }, {
     timestamps: true,
     optimisticConcurrency: true,
 });
+
+gameSchema.index({ 'white.playerId': 1, 'white.playerType': 1, status: 1 });
+gameSchema.index({ 'black.playerId': 1, 'black.playerType': 1, status: 1 });
 
 export const GameModel = mongoose.model('Game', gameSchema);

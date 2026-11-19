@@ -234,16 +234,40 @@ for (const [user, winner] of [[ids.white, 'black'], [ids.black, 'white']] as con
         assert.equal(result.body.game.winner, winner);
         assert.deepEqual(result.body.game.moves, history);
         assert.equal(game.status, 'finished');
+        assert.ok(game.finishedAt instanceof Date);
+        assert.equal(result.body.game.finishedAt, game.finishedAt.toISOString());
+        const finishedAt = game.finishedAt.getTime();
         assert.equal(save.mock.callCount(), 1);
         assert.deepEqual(elo.mock.calls.map(call => call.arguments), [
             [game[winner].playerId, { $inc: { elo: 24 } }],
             [game[winner === 'white' ? 'black' : 'white'].playerId, { $inc: { elo: -24 } }],
         ]);
         assert.equal((await request('/finish', { ...finish, finishedReason: 'resignation' }, user)).status, 200);
+        assert.equal(game.finishedAt.getTime(), finishedAt);
         assert.equal(save.mock.callCount(), 1);
         assert.equal(elo.mock.callCount(), 2);
     });
 }
+
+test('finishing a game persists its date and keeps the starting player ratings', async t => {
+    const { game, save, elo } = fixture(t, {
+        white: { playerType: 'user', playerId: ids.white, name: 'White', elo: 1200, avatarURL: '/white.png' },
+        black: { playerType: 'user', playerId: ids.black, name: 'Black', elo: 1300, avatarURL: '/black.png' },
+    });
+    const snapshots = { white: game.white.toObject(), black: game.black.toObject() };
+    const startedAt = Date.now();
+    save.mock.mockImplementation(async () => {
+        assert.ok(game.finishedAt instanceof Date);
+        assert.equal(elo.mock.callCount(), 0);
+        return game;
+    });
+    const result = await request('/finish', { gameId: ids.game, finishedReason: 'resignation' }, ids.white);
+    assert.equal(result.status, 200);
+    assert.ok(game.finishedAt!.getTime() >= startedAt && game.finishedAt!.getTime() <= Date.now());
+    assert.deepEqual({ white: game.white.toObject(), black: game.black.toObject() }, snapshots);
+    assert.equal(save.mock.callCount(), 1);
+    assert.equal(elo.mock.callCount(), 2);
+});
 
 for (const reason of ['checkmate', 'stalemate', 'fifty-move-draw', 'threefold-repetition-draw', 'insufficient-material-draw', 'timeout', 'agreement', 'playing']) {
     test(`participant cannot invent a ${reason} result in a playing position`, async t => {
@@ -268,6 +292,7 @@ test('checkmate is detected and finalized by the server after a legal move', asy
     assert.equal(game.status, 'finished');
     assert.equal(game.winner, 'black');
     assert.equal(game.finishedReason, 'checkmate');
+    assert.ok(game.finishedAt instanceof Date);
     assert.equal(elo.mock.callCount(), 2);
     const repeatedFinish = await request('/finish', finish, ids.white);
     assert.equal(repeatedFinish.status, 200);
@@ -299,6 +324,7 @@ for (const [reason, overrides, winner] of [
         assert.equal(result.status, 200);
         assert.equal(result.body.game.winner, winner);
         assert.equal(result.body.game.finishedReason, reason);
+        assert.ok(!Number.isNaN(Date.parse(result.body.game.finishedAt)));
         assert.deepEqual(result.body.game.moves, history);
         assert.equal(save.mock.callCount(), 1);
         assert.equal(elo.mock.callCount(), winner === 'draw' ? 0 : 2);
@@ -545,5 +571,6 @@ test('bot checkmate still finalizes the game and releases the bot', async t => {
     assert.equal(game.status, 'finished');
     assert.equal(game.winner, 'black');
     assert.equal(bot.status, 'idle');
+    assert.ok(game.finishedAt instanceof Date);
     assert.equal(queue.mock.callCount(), 1);
 });

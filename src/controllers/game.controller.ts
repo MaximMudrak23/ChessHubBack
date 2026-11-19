@@ -104,6 +104,32 @@ export async function getActiveGame(req: AuthRequest, res: Response) {
     }
 }
 
+export async function getGameHistory(req: AuthRequest, res: Response) {
+    try {
+        const userID = req.userId;
+        if (typeof userID !== 'string' || !isObjectIdOrHexString(userID)) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        const { page = '1', limit = '20' } = req.query;
+        if (
+            typeof page !== 'string' || !/^[1-9]\d*$/.test(page) ||
+            typeof limit !== 'string' || !/^[1-9]\d*$/.test(limit) ||
+            !Number.isSafeInteger(Number(page)) ||
+            !Number.isSafeInteger(Number(limit)) || Number(limit) > 100 ||
+            !Number.isSafeInteger(Number(page) * Number(limit))
+        ) {
+            return res.status(400).json({ message: 'Invalid pagination: page must be a positive integer, limit must be 1-100' });
+        }
+
+        const history = await gameService.getGameHistory(userID, Number(page), Number(limit));
+        return res.status(200).json(history);
+    } catch (error) {
+        console.log('GET GAME HISTORY ERROR:', error);
+        return res.status(500).json({ message: 'Server error' });
+    }
+}
+
 export async function makeMove(req: AuthRequest, res: Response) {
     try {
         const userID = req.userId;

@@ -13,6 +13,8 @@ import { normalizePieces } from "../chess/lib/normalizePieces";
 import { getIO, getPlayerRoom, getMatchmakingRoom, getUserRoom } from "../socket/socket";
 import { getGameStatus } from "../chess/lib/applyMove/getGameStatus";
 import { gameFinalizerService } from "./gameFinalizer.service";
+import { Types } from 'mongoose';
+import { getGameHistoryDTO, type GameHistoryRecord } from '../dtos/gameHistory.dto';
 
 class GameService {
     private getUserSide(game: InstanceType<typeof GameModel>, userID: string): Side {
@@ -224,6 +226,65 @@ class GameService {
         if (!existingGame) throw new Error('GAME NOT FOUND');
 
         return existingGame;
+    }
+
+    async getGameHistory(userID: string, page: number, limit: number) {
+        // Mongoose does not cast IDs inside aggregation pipelines.
+        const playerId = new Types.ObjectId(userID);
+        const [history] = await GameModel.aggregate<{
+            games: GameHistoryRecord[];
+            total: { count: number }[];
+        }>([
+            {
+                $match: {
+                    status: 'finished',
+                    winner: { $in: ['white', 'black', 'draw'] },
+                    $or: [
+                        { 'white.playerType': 'user', 'white.playerId': playerId },
+                        { 'black.playerType': 'user', 'black.playerId': playerId },
+                    ],
+                },
+            },
+            {
+                $project: {
+                    'white.playerType': 1,
+                    'white.playerId': 1,
+                    'white.name': 1,
+                    'white.avatarURL': 1,
+                    'white.elo': 1,
+                    'black.playerType': 1,
+                    'black.playerId': 1,
+                    'black.name': 1,
+                    'black.avatarURL': 1,
+                    'black.elo': 1,
+                    winner: 1,
+                    finishedAt: { $ifNull: ['$finishedAt', '$updatedAt'] },
+                    movesCount: { $size: { $ifNull: ['$moves', []] } },
+                },
+            },
+            {
+                $facet: {
+                    games: [
+                        { $sort: { finishedAt: -1, _id: -1 } },
+                        { $skip: (page - 1) * limit },
+                        { $limit: limit },
+                    ],
+                    total: [{ $count: 'count' }],
+                },
+            },
+        ]);
+
+        const total = history?.total[0]?.count ?? 0;
+        return {
+            games: (history?.games ?? []).map(game => getGameHistoryDTO(game, userID)),
+            pagination: {
+                page,
+                limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+                hasMore: page * limit < total,
+            },
+        };
     }
 
     async getActiveGame(userID: string) {
