@@ -60,10 +60,11 @@ function fixture(t: TestContext, overrides: Record<string, unknown> = {}) {
     const find = t.mock.method(GameModel, 'findById', async () => game);
     const elo = t.mock.method(UserModel, 'findByIdAndUpdate', async () => null);
     t.mock.method(UserModel, 'findById', async () => null);
-    const emit = t.mock.method(io, 'to', () => ({ emit() {} }));
+    const broadcast = t.mock.fn();
+    const emit = t.mock.method(io, 'to', () => ({ emit: broadcast }));
     const botTurn = t.mock.method(gameService, 'tryRunBotTurn', async () => null);
     t.mock.method(console, 'log', () => {});
-    return { game, save, find, elo, emit, botTurn };
+    return { game, save, find, elo, emit, broadcast, botTurn };
 }
 
 async function request(path: string, body?: unknown, userId?: string) {
@@ -206,7 +207,7 @@ for (const [turn, user, attemptedMove] of [
 }
 
 test('both participants can make legal moves in turn', async t => {
-    const { game, save, emit, botTurn } = fixture(t);
+    const { game, save, emit, broadcast, botTurn } = fixture(t);
     const white = await request('/move', move, ids.white);
     assert.equal(white.status, 200);
     assert.equal(white.body.game.currentTurn, 'black');
@@ -218,6 +219,16 @@ test('both participants can make legal moves in turn', async t => {
     assert.equal(black.status, 200);
     assert.equal(black.body.game.currentTurn, 'white');
     assert.equal(game.moves.length, 1);
+    const expectedHistory = [
+        'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3',
+        'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6',
+    ];
+    assert.deepEqual(white.body.game.positionHistory, expectedHistory.slice(0, 1));
+    assert.deepEqual(black.body.game.positionHistory, expectedHistory);
+    assert.deepEqual(broadcast.mock.calls.map(call => [call.arguments[0], call.arguments[1].positionHistory]), [
+        ['game:update', expectedHistory.slice(0, 1)],
+        ['game:update', expectedHistory],
+    ]);
     assert.equal(save.mock.callCount(), 2);
     assert.equal(emit.mock.callCount(), 2);
     assert.equal(botTurn.mock.callCount(), 2);
@@ -382,7 +393,7 @@ test('authenticated active-game lookup resumes a bot only in the requesting user
 });
 
 test('bot still applies a legal engine move through its internal service', async t => {
-    const { game, save } = fixture(t, { black: { playerType: 'bot', playerId: ids.black, engine: 'stockfish' } });
+    const { game, save, broadcast } = fixture(t, { black: { playerType: 'bot', playerId: ids.black, engine: 'stockfish' } });
     assert.equal((await request('/move', move, ids.white)).status, 200);
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const engine = t.mock.method(StockfishEngine.prototype, 'getBestMove', async () => 'e7e5');
@@ -395,6 +406,12 @@ test('bot still applies a legal engine move through its internal service', async
     assert.equal(result?.gameStatus, 'playing');
     assert.equal(result?.game.currentTurn, 'white');
     assert.equal(result?.game.pieces.find((p: any) => p.id === 'bp5').square, 'e5');
+    const expectedHistory = [
+        'rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3',
+        'rnbqkbnr/pppp1ppp/8/4p3/4P3/8/PPPP1PPP/RNBQKBNR w KQkq e6',
+    ];
+    assert.deepEqual(result?.game.positionHistory, expectedHistory);
+    assert.deepEqual(broadcast.mock.calls[1].arguments[1].positionHistory, expectedHistory);
     assert.equal(save.mock.callCount(), 1);
     assert.equal(engine.mock.callCount(), 1);
     assert.equal(update.mock.callCount(), 1);
@@ -402,6 +419,29 @@ test('bot still applies a legal engine move through its internal service', async
     assert.equal(await botService.makeBotMove(ids.game), null);
     assert.equal(engine.mock.callCount(), 1);
 });
+
+for (const status of ['active', 'finished'] as const) {
+    test(`public lookup exposes ${status} game positions without changing the game`, async t => {
+        const positionHistory = ['rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3'];
+        const { game, save, emit, botTurn } = fixture(t, {
+            status,
+            currentTurn: 'black',
+            moves: [{ whiteMove: 'e4' }],
+            positionHistory,
+            pieces: initialPieces.map(piece => piece.id === 'wp5' ? { ...piece, square: 'e4', hasMoved: true } : piece),
+            lastMove: { piece: 'wp', from: 'e2', to: 'e4' },
+        });
+        const before = game.toObject();
+        const result = await request(`/by-id/${ids.game}`);
+        assert.equal(result.status, 200);
+        assert.deepEqual(result.body.game.positionHistory, positionHistory);
+        assert.deepEqual(result.body.game.moves, [{ whiteMove: 'e4' }]);
+        assert.deepEqual(game.toObject(), before);
+        assert.equal(save.mock.callCount(), 0);
+        assert.equal(emit.mock.callCount(), 0);
+        assert.equal(botTurn.mock.callCount(), 0);
+    });
+}
 
 test('resigning against a bot releases it and preserves the internal rating update', async t => {
     fixture(t, { black: { playerType: 'bot', playerId: ids.black } });
