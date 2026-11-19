@@ -89,7 +89,7 @@ After code changes, rebuild the image and start a new container. Actual deployme
 
 `docker build` validates that the image builds; **it does not test gameplay**. `npm test` is currently a placeholder. Check authentication, matchmaking, bot moves and game completion manually against the development database.
 
-## Host on you Wi-Fi
+## Host on your Wi-Fi
 
 ```bash
 docker run --rm --platform linux/amd64 \
